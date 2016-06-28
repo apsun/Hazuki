@@ -6,16 +6,24 @@
 
 typedef void (*printer)(const void *, FILE *);
 
-size_t
+static size_t
 hash_int(const void *key)
 {
-    return (size_t)*(int *)key;
+    if (key == NULL) {
+        return 0;
+    } else {
+        return (size_t)*(int *)key;
+    }
 }
 
-int
+static int
 cmp_int(const void *a, const void *b)
 {
-    return *(int *)a - *(int *)b;
+    if (a == NULL || b == NULL) {
+        return a != b;
+    } else {
+        return *(int *)a != *(int *)b;
+    }
 }
 
 static void
@@ -59,7 +67,7 @@ hz_map_print(const hz_map *map, FILE *file, printer key_printer, printer value_p
     fputs("}\n", file);
 }
 
-void
+static void
 hz_map_assert_get(const hz_map *map, void *key, void *value)
 {
     if (!hz_map_contains(map, key)) {
@@ -71,7 +79,7 @@ hz_map_assert_get(const hz_map *map, void *key, void *value)
     }
 }
 
-void
+static void
 hz_map_assert_not_get(const hz_map *map, void *key)
 {
     if (hz_map_contains(map, key)) {
@@ -83,7 +91,7 @@ hz_map_assert_not_get(const hz_map *map, void *key)
     }
 }
 
-void
+static void
 hz_map_assert_eq(const hz_map *map, void **kvps, size_t count)
 {
     for (size_t i = 0; i < count; ++i) {
@@ -93,13 +101,19 @@ hz_map_assert_eq(const hz_map *map, void **kvps, size_t count)
     }
 }
 
-void
+static void
 hz_map_assert_size(const hz_map *map, size_t size)
 {
     size_t map_size = hz_map_size(map);
     if (map_size != size) {
         hz_abort("Expected %zu items in map, got %zu", map_size, size);
     }
+}
+
+static void
+hz_map_print_int_string(const hz_map *map)
+{
+    hz_map_print(map, stdout, print_int, print_string);
 }
 
 int
@@ -115,6 +129,8 @@ main(int argc, char *argv[])
         "zero-new", "one-new", "two-new", "three-new", "four-new",
         "five-new", "six-new", "seven-new", "eight-new", "nine-new"
     };
+
+    // Insertion test, key 10 should overwrite key 0
     hz_map *map1 = hz_map_new(hash_int, cmp_int);
     hz_map_put(map1, &test_data[0], test_data_names[0]);
     hz_map_put(map1, &test_data[1], test_data_names[1]);
@@ -130,8 +146,9 @@ main(int argc, char *argv[])
     hz_map_assert_eq(map1, map1_expected, 4);
     hz_map_assert_not_get(map1, &test_data[5]);
     hz_map_assert_size(map1, 3);
-    hz_map_print(map1, stdout, print_int, print_string);
+    hz_map_print_int_string(map1);
 
+    // Removal test, value 10 should be written to key 3, removal should be no-op
     hz_map *map2 = hz_map_copy(map1);
     hz_map_put(map2, &test_data[3], hz_map_remove(map2, &test_data[0]));
     hz_map_remove(map2, &test_data[10]);
@@ -144,13 +161,39 @@ main(int argc, char *argv[])
     hz_map_assert_not_get(map2, &test_data[10]);
     hz_map_assert_not_get(map2, &test_data[0]);
     hz_map_assert_size(map2, 3);
-    hz_map_print(map2, stdout, print_int, print_string);
+    hz_map_print_int_string(map2);
 
+    // Clear test, previous keys should not exist anymore
     hz_map *map3 = hz_map_copy(map2);
     hz_map_clear(map3);
     hz_map_assert_not_get(map3, &test_data[2]);
     hz_map_assert_size(map3, 0);
-    hz_map_print(map3, stdout, print_int, print_string);
+    hz_map_print_int_string(map3);
+
+    // NULL key and key overwrite test, value 14 should overwrite value 4
+    hz_map *map4 = hz_map_copy(map3);
+    hz_map_put(map4, NULL, test_data_names[4]);
+    hz_map_put(map4, NULL, test_data_names[14]);
+    void *map4_expected[] = {
+        NULL, test_data_names[14]
+    };
+    hz_map_assert_eq(map4, map4_expected, 1);
+    hz_map_print_int_string(map4);
+
+    // Large map capacity test
+    hz_map *map5 = hz_map_copy(map4);
+    int test_data2[10000];
+    for (int i = 0; i < 10000; ++i) {
+        test_data2[i] = i;
+        hz_map_put(map5, &test_data2[i], &test_data2[i]);
+    }
+    hz_map_assert_size(map5, 10001);
+
+    hz_map_free(map1);
+    hz_map_free(map2);
+    hz_map_free(map3);
+    hz_map_free(map4);
+    hz_map_free(map5);
 
     printf("All tests passed!\n");
     getchar();

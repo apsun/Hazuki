@@ -30,6 +30,12 @@ hz_vector_print(const hz_vector *vec, FILE *file, printer element_printer)
 }
 
 static void
+hz_vector_print_int(const hz_vector *vec)
+{
+    hz_vector_print(vec, stdout, print_int);
+}
+
+static void
 hz_vector_assert_capacity(const hz_vector *vec, size_t capacity)
 {
     size_t vec_capacity = hz_vector_capacity(vec);
@@ -74,9 +80,12 @@ hz_vector_assert_eq(const hz_vector *vec, const void **arr, size_t size)
     }
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
     int test_data[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+    // Append and insert test
     hz_vector *vec1 = hz_vector_new();
     hz_vector_append(vec1, &test_data[1]);
     hz_vector_append(vec1, NULL);
@@ -95,8 +104,9 @@ int main(int argc, char *argv[])
         &test_data[9]
     };
     hz_vector_assert_eq(vec1, vec1_expected, 7);
-    hz_vector_print(vec1, stdout, print_int);
+    hz_vector_print_int(vec1);
 
+    // Removal test
     hz_vector *vec2 = hz_vector_copy(vec1);
     hz_vector_append(vec2, &test_data[4]);
     hz_vector_append(vec2, &test_data[1]);
@@ -112,8 +122,9 @@ int main(int argc, char *argv[])
         &test_data[1]
     };
     hz_vector_assert_eq(vec2, vec2_expected, 7);
-    hz_vector_print(vec2, stdout, print_int);
+    hz_vector_print_int(vec2);
 
+    // Capacity reserve test
     hz_vector *vec3 = hz_vector_copy(vec2);
     hz_vector_reserve(vec3, 500);
     hz_vector_remove(vec3, 0);
@@ -129,8 +140,9 @@ int main(int argc, char *argv[])
     };
     hz_vector_assert_capacity(vec3, 500);
     hz_vector_assert_eq(vec3, vec3_expected, 7);
-    hz_vector_print(vec3, stdout, print_int);
+    hz_vector_print_int(vec3);
 
+    // Value find test
     hz_vector *vec4 = hz_vector_copy(vec3);
     hz_vector_assert_find(vec4, &test_data[9], 4);
     hz_vector_assert_find(vec4, NULL, 3);
@@ -138,7 +150,7 @@ int main(int argc, char *argv[])
     hz_vector_assert_not_find(vec4, &test_data[8]);
     hz_vector_trim(vec4);
     hz_vector_assert_capacity(vec4, 7);
-    hz_vector_print(vec4, stdout, print_int);
+    hz_vector_print_int(vec4);
 
     hz_vector_free(vec1);
     hz_vector_free(vec2);
