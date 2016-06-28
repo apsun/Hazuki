@@ -1,9 +1,12 @@
 #include "hazuki/vector.h"
 #include "hazuki/utils.h"
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-static void print_int(void *value, FILE *file)
+typedef void (*printer)(const void *, FILE *);
+
+static void
+print_int(const void *value, FILE *file)
 {
     if (value == NULL) {
         fprintf(file, "(null)");
@@ -12,7 +15,8 @@ static void print_int(void *value, FILE *file)
     }
 }
 
-static void hz_vector_print(const hz_vector *vec, FILE *file, void (*element_printer)(void *, FILE *))
+static void
+hz_vector_print(const hz_vector *vec, FILE *file, printer element_printer)
 {
     fputc('[', file);
     size_t size = hz_vector_size(vec);
@@ -22,54 +26,57 @@ static void hz_vector_print(const hz_vector *vec, FILE *file, void (*element_pri
         }
         element_printer(hz_vector_get(vec, i), file);
     }
-    fputc(']', file);
-    fputc('\n', file);
+    fputs("]\n", file);
 }
 
-static void hz_vector_assert_capacity(const hz_vector *vec, size_t capacity)
+static void
+hz_vector_assert_capacity(const hz_vector *vec, size_t capacity)
 {
     size_t vec_capacity = hz_vector_capacity(vec);
     if (vec_capacity != capacity) {
-        hz_abort("Vector capacity (%d) does not match expected capacity (%d)", vec_capacity, capacity);
+        hz_abort("Vector capacity (%zu) does not match expected capacity (%zu)", vec_capacity, capacity);
     }
 }
 
-static void hz_vector_assert_find(const hz_vector *vec, void *value, size_t index)
+static void
+hz_vector_assert_find(const hz_vector *vec, void *value, size_t index)
 {
     size_t vec_index;
     if (!hz_vector_find(vec, value, &vec_index)) {
-        hz_abort("Vector element not found: %x", value);
+        hz_abort("Vector element not found: %p", value);
     }
     if (vec_index != index) {
-        hz_abort("Vector element (%x) found at [%d] but expected at [%d]", value, vec_index, index);
+        hz_abort("Vector element (%p) found at [%zu] but expected at [%zu]", value, vec_index, index);
     }
 }
 
-static void hz_vector_assert_not_find(const hz_vector *vec, void *value)
+static void
+hz_vector_assert_not_find(const hz_vector *vec, void *value)
 {
     size_t vec_index;
     if (hz_vector_find(vec, value, &vec_index)) {
-        hz_abort("Vector element (%x) found at [%d] but shouldn't exist", value, vec_index);
+        hz_abort("Vector element (%p) found at [%zu] but shouldn't exist", value, vec_index);
     }
 }
 
-static void hz_vector_assert_eq(const hz_vector *vec, const void **arr, size_t size)
+static void
+hz_vector_assert_eq(const hz_vector *vec, const void **arr, size_t size)
 {
     size_t vec_size = hz_vector_size(vec);
     if (vec_size != size) {
-        hz_abort("Vector size (%d) does not match expected size (%d)", vec_size, size);
+        hz_abort("Vector size (%zu) does not match expected size (%zu)", vec_size, size);
     }
     for (size_t i = 0; i < size; ++i) {
         void *vec_item = hz_vector_get(vec, i);
         if (vec_item != arr[i]) {
-            hz_abort("Vector element at [%d] (%x) does not match expected value (%x)", i, vec_item, arr[i]);
+            hz_abort("Vector element at [%zu] (%p) does not match expected value (%p)", i, vec_item, arr[i]);
         }
     }
 }
 
 int main(int argc, char *argv[])
 {
-    int test_data[10] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+    int test_data[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
     hz_vector *vec1 = hz_vector_new();
     hz_vector_append(vec1, &test_data[1]);
     hz_vector_append(vec1, NULL);

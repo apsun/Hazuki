@@ -10,8 +10,9 @@ Named after [Hazuki Tachibana](https://vndb.org/c20285).
 
 ## Contents
 
-- `vector.h`: A self-resizing array implementation (a.k.a. `ArrayList`).
-- `utils.h`: Common utility functions (designed for internal use).
+- `vector.h`: Auto-resizing array (a.k.a. `ArrayList`, `std::vector`)
+- `map.h`: Key-value store (a.k.a. `HashMap`, `std::unordered_map`)
+- `utils.h`: Common utility functions
 
 ## License
 
