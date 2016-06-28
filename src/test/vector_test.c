@@ -36,6 +36,15 @@ hz_vector_print_int(const hz_vector *vec)
 }
 
 static void
+hz_vector_assert_size(const hz_vector *vec, size_t size)
+{
+    size_t vec_size = hz_vector_size(vec);
+    if (vec_size != size) {
+        hz_abort("Vector size (%zu) does not match expected size (%zu)", vec_size, size);
+    }
+}
+
+static void
 hz_vector_assert_capacity(const hz_vector *vec, size_t capacity)
 {
     size_t vec_capacity = hz_vector_capacity(vec);
@@ -66,17 +75,20 @@ hz_vector_assert_not_find(const hz_vector *vec, void *value)
 }
 
 static void
+hz_vector_assert_get(const hz_vector *vec, size_t index, const void *value)
+{
+    void *vec_item = hz_vector_get(vec, index);
+    if (vec_item != value) {
+        hz_abort("Vector element at [%zu] (%p) does not match expected value (%p)", index, vec_item, value);
+    }
+}
+
+static void
 hz_vector_assert_eq(const hz_vector *vec, const void **arr, size_t size)
 {
-    size_t vec_size = hz_vector_size(vec);
-    if (vec_size != size) {
-        hz_abort("Vector size (%zu) does not match expected size (%zu)", vec_size, size);
-    }
+    hz_vector_assert_size(vec, size);
     for (size_t i = 0; i < size; ++i) {
-        void *vec_item = hz_vector_get(vec, i);
-        if (vec_item != arr[i]) {
-            hz_abort("Vector element at [%zu] (%p) does not match expected value (%p)", i, vec_item, arr[i]);
-        }
+        hz_vector_assert_get(vec, i, arr[i]);
     }
 }
 
@@ -108,6 +120,7 @@ main(int argc, char *argv[])
 
     // Removal test
     hz_vector *vec2 = hz_vector_copy(vec1);
+    hz_vector_free(vec1);
     hz_vector_append(vec2, &test_data[4]);
     hz_vector_append(vec2, &test_data[1]);
     hz_vector_remove(vec2, 0);
@@ -126,6 +139,7 @@ main(int argc, char *argv[])
 
     // Capacity reserve test
     hz_vector *vec3 = hz_vector_copy(vec2);
+    hz_vector_free(vec2);
     hz_vector_reserve(vec3, 500);
     hz_vector_remove(vec3, 0);
     hz_vector_insert(vec3, 0, &test_data[1]);
@@ -144,6 +158,7 @@ main(int argc, char *argv[])
 
     // Value find test
     hz_vector *vec4 = hz_vector_copy(vec3);
+    hz_vector_free(vec3);
     hz_vector_assert_find(vec4, &test_data[9], 4);
     hz_vector_assert_find(vec4, NULL, 3);
     hz_vector_assert_find(vec4, &test_data[1], 0);
@@ -152,10 +167,20 @@ main(int argc, char *argv[])
     hz_vector_assert_capacity(vec4, 7);
     hz_vector_print_int(vec4);
 
-    hz_vector_free(vec1);
-    hz_vector_free(vec2);
-    hz_vector_free(vec3);
+    // Large vector and resize test
+    hz_vector *vec5 = hz_vector_copy(vec4);
     hz_vector_free(vec4);
+    hz_vector_clear(vec5);
+    int test_data2[10000];
+    for (int i = 0; i < 10000; ++i) {
+        test_data2[i] = i;
+        hz_vector_insert(vec5, 0, &test_data2[i]);
+    }
+    hz_vector_assert_size(vec5, 10000);
+    for (int i = 0; i < 10000; ++i) {
+        hz_vector_assert_get(vec5, i, &test_data2[10000 - i - 1]);
+    }
+    hz_vector_free(vec5);
 
     printf("All tests passed!\n");
     getchar();

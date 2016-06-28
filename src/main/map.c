@@ -179,6 +179,7 @@ hz_map_add_entry(hz_map *map, size_t hash, void *key, void *value)
     size_t index = hz_map_get_bucket_index(hash, map->bucket_count);
     if (hz_map_should_resize(map, index)) {
         hz_map_resize(map);
+        index = hz_map_get_bucket_index(hash, map->bucket_count);
     }
     hz_map_entry *new_entry = hz_map_entry_new(hash, key, value);
     hz_map_entry *old_head = map->buckets[index];
