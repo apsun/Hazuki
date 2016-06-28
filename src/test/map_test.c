@@ -34,7 +34,7 @@ print_string(const void *value, FILE *file)
     if (value == NULL) {
         fprintf(file, "(null)");
     } else {
-        fprintf(file, "%s", (char *)value);
+        fprintf(file, "\"%s\"", (char *)value);
     }
 }
 

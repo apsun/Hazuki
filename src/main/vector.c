@@ -2,11 +2,10 @@
 #include "hazuki/utils.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #define INITIAL_CAPACITY 8
-#define SCALING_FACTOR 2
+#define SCALING_FACTOR 1.5
 
 struct hz_vector
 {
@@ -42,14 +41,14 @@ static size_t
 hz_vector_next_capacity(size_t current_capacity)
 {
     if (current_capacity == SIZE_MAX) {
-        hz_abort("Cannot resize vector larger than SIZE_MAX elements");
+        hz_abort("Cannot resize vector larger than %zu elements", SIZE_MAX);
         return 0;
     } else if (current_capacity == 0) {
         return INITIAL_CAPACITY;
-    } else if (current_capacity > SIZE_MAX / SCALING_FACTOR) {
+    } else if (current_capacity > (size_t)(SIZE_MAX / SCALING_FACTOR)) {
         return SIZE_MAX;
     } else {
-        return current_capacity * SCALING_FACTOR;
+        return (size_t)(current_capacity * SCALING_FACTOR);
     }
 }
 

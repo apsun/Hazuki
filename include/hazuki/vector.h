@@ -1,8 +1,8 @@
 #ifndef HAZUKI_VECTOR_H_INCLUDED
 #define HAZUKI_VECTOR_H_INCLUDED
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct hz_vector hz_vector;
 

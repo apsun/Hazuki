@@ -1,8 +1,8 @@
 #ifndef HAZUKI_MAP_H_INCLUDED
 #define HAZUKI_MAP_H_INCLUDED
 
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 typedef struct hz_map hz_map;
 typedef struct hz_map_iterator hz_map_iterator;
