@@ -332,6 +332,7 @@ hz_map_remove(hz_map *map, const void *key)
 hz_map_iterator *
 hz_map_iterator_new(const hz_map *map)
 {
+    hz_map_check_null(map);
     hz_map_iterator *it = hz_malloc(1, sizeof(hz_map_iterator));
     it->map = map;
     it->mod_count = map->mod_count;
