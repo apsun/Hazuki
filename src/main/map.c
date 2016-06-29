@@ -34,7 +34,7 @@ struct hz_map_iterator
     unsigned int mod_count;
 };
 
-static void 
+static void
 hz_map_check_null(const hz_map *map)
 {
     if (map == NULL) {
@@ -50,13 +50,13 @@ hz_map_iterator_check_null(const hz_map_iterator *it)
     }
 }
 
-static void 
+static void
 hz_map_touch(hz_map *map)
 {
     map->mod_count++;
 }
 
-static size_t 
+static size_t
 hz_map_hash_key(const hz_map *map, const void *key)
 {
     return map->hash_func(key);
@@ -68,7 +68,7 @@ hz_map_get_bucket_index(size_t hash, size_t bucket_count)
     return hash & (bucket_count - 1);
 }
 
-static bool 
+static bool
 hz_map_entry_matches(const hz_map *map, hz_map_entry *entry,
                      size_t hash, const void *key)
 {
@@ -145,7 +145,10 @@ hz_map_resize(hz_map *map)
     size_t old_size = map->bucket_count;
     size_t new_size = hz_map_next_bucket_count(old_size);
     hz_map_entry **old_buckets = map->buckets;
-    hz_map_entry **new_buckets = hz_calloc(new_size, sizeof(hz_map_entry *));
+    hz_map_entry **new_buckets = hz_malloc(new_size, sizeof(hz_map_entry *));
+    for (size_t i = 0; i < new_size; ++i) {
+        new_buckets[i] = NULL;
+    }
     for (size_t i = 0; i < old_size; ++i) {
         hz_map_entry *e = old_buckets[i];
         while (e != NULL) {
@@ -244,14 +247,14 @@ hz_map_free(hz_map *map)
     hz_free(map);
 }
 
-size_t 
+size_t
 hz_map_size(const hz_map *map)
 {
     hz_map_check_null(map);
     return map->size;
 }
 
-void 
+void
 hz_map_clear(hz_map *map)
 {
     hz_map_check_null(map);
@@ -262,7 +265,7 @@ hz_map_clear(hz_map *map)
     map->buckets = NULL;
 }
 
-bool 
+bool
 hz_map_contains(const hz_map *map, const void *key)
 {
     hz_map_check_null(map);
@@ -342,7 +345,7 @@ hz_map_iterator_new(const hz_map *map)
     return it;
 }
 
-void 
+void
 hz_map_iterator_free(hz_map_iterator *it)
 {
     hz_map_iterator_check_null(it);
