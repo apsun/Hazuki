@@ -23,7 +23,7 @@ hz_malloc(size_t num, size_t size);
  * Allocates a zero-initialized block of memory, with overflow
  * and failure checking. If num == 0, NULL is returned. The unit
  * size must not be 0. If num != 0, hz_calloc(num, sizeof(T))
- * is equivalent to calloc(num * sizeof(T)), except that if
+ * is equivalent to calloc(num, sizeof(T)), except that if
  * num * sizeof(T) overflows or calloc returns NULL, the program
  * is aborted.
  */
