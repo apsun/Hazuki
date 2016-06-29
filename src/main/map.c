@@ -365,8 +365,12 @@ hz_map_iterator_next(hz_map_iterator *it, void **key, void **value)
         }
         it->current_entry = it->map->buckets[it->bucket_index++];
     }
-    *key = it->current_entry->key;
-    *value = it->current_entry->value;
+    if (key != NULL) {
+        *key = it->current_entry->key;
+    }
+    if (value != NULL) {
+        *value = it->current_entry->value;
+    }
     it->current_entry = it->current_entry->next;
     return true;
 }

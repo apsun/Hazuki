@@ -31,7 +31,7 @@ hz_vector_check_index(const hz_vector *vec, size_t index)
 }
 
 static void
-hz_vector_resize(hz_vector *vec, size_t new_capacity)
+hz_vector_resize_capacity(hz_vector *vec, size_t new_capacity)
 {
     vec->elements = hz_realloc(vec->elements, new_capacity, sizeof(void *));
     vec->capacity = new_capacity;
@@ -57,7 +57,7 @@ hz_vector_grow_if_full(hz_vector *vec)
 {
     if (vec->size == vec->capacity) {
         size_t new_capacity = hz_vector_next_capacity(vec->capacity);
-        hz_vector_resize(vec, new_capacity);
+        hz_vector_resize_capacity(vec, new_capacity);
     }
 }
 
@@ -108,20 +108,30 @@ hz_vector_capacity(const hz_vector *vec)
 }
 
 void
+hz_vector_resize(hz_vector *vec, size_t size, void *fill)
+{
+    hz_vector_check_null(vec);
+    hz_vector_reserve(vec, size);
+    for (size_t i = vec->size; i < size; ++i) {
+        vec->elements[i] = fill;
+    }
+    vec->size = size;
+}
+
+void
 hz_vector_reserve(hz_vector *vec, size_t capacity)
 {
     hz_vector_check_null(vec);
-    if (capacity <= vec->capacity) {
-        return;
+    if (capacity > vec->capacity) {
+        hz_vector_resize_capacity(vec, capacity);
     }
-    hz_vector_resize(vec, capacity);
 }
 
 void
 hz_vector_trim(hz_vector *vec)
 {
     hz_vector_check_null(vec);
-    hz_vector_resize(vec, vec->size);
+    hz_vector_resize_capacity(vec, vec->size);
 }
 
 void
@@ -200,4 +210,15 @@ hz_vector_find(const hz_vector *vec, void *value, size_t *out_index)
         }
     }
     return false;
+}
+
+void **
+hz_vector_data(hz_vector *vec)
+{
+    hz_vector_check_null(vec);
+    if (vec->size == 0) {
+        return NULL;
+    } else {
+        return vec->elements;
+    }
 }

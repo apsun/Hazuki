@@ -108,7 +108,8 @@ hz_map_iterator_free(hz_map_iterator *it);
  * Moves the iterator to the next element in the hashmap. If there are no
  * more elements in the hashmap, returns false and the key and value
  * parameters are unchanged. Otherwise, returns true and the key and
- * value parameters are filled with their corresponding values.
+ * value parameters are filled with their corresponding values. You may
+ * pass NULL for the key or value parameters to ignore their value.
  */
 bool
 hz_map_iterator_next(hz_map_iterator *it, void **key, void **value);

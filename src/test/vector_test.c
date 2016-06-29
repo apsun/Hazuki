@@ -167,7 +167,7 @@ main(int argc, char *argv[])
     hz_vector_assert_capacity(vec4, 7);
     hz_vector_print_int(vec4);
 
-    // Large vector and resize test
+    // Large vector and auto-resize test
     hz_vector *vec5 = hz_vector_copy(vec4);
     hz_vector_free(vec4);
     hz_vector_clear(vec5);
@@ -180,7 +180,29 @@ main(int argc, char *argv[])
     for (int i = 0; i < 10000; ++i) {
         hz_vector_assert_get(vec5, i, &test_data2[10000 - i - 1]);
     }
+
+    // Vector resize test
+    hz_vector *vec6 = hz_vector_copy(vec5);
     hz_vector_free(vec5);
+    hz_vector_clear(vec6);
+    int dummy1 = 0, dummy2 = 1;
+    hz_vector_resize(vec6, 10, &dummy2);
+    void **buf6 = hz_vector_data(vec6);
+    for (int i = 0; i < 5; ++i) {
+        buf6[i] = ((i & 1) == 0) ? &dummy1 : &dummy2;
+    }
+    hz_vector_print_int(vec6);
+    hz_vector_resize(vec6, 5, NULL);
+    void *vec6_expected[] = {
+        &dummy1,
+        &dummy2,
+        &dummy1,
+        &dummy2,
+        &dummy1
+    };
+    hz_vector_assert_eq(vec6, vec6_expected, 5);
+    hz_vector_print_int(vec6);
+    hz_vector_free(vec6);
 
     printf("All tests passed!\n");
     getchar();
