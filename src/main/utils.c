@@ -23,7 +23,7 @@ hz_alloc_check_size(size_t num, size_t size)
     if (size == 0) {
         hz_abort("Allocation unit size is zero");
     } else if (num > SIZE_MAX / size) {
-        hz_abort("Allocation size is too large: %d * %d", num, size);
+        hz_abort("Allocation size is too large: %zu * %zu", num, size);
     }
 }
 
