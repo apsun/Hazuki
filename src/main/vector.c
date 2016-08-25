@@ -198,7 +198,7 @@ hz_vector_remove(hz_vector *vec, size_t index)
 }
 
 bool
-hz_vector_find(const hz_vector *vec, void *value, size_t *out_index)
+hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index)
 {
     hz_vector_check_null(vec);
     for (size_t i = 0; i < vec->size; ++i) {

@@ -110,11 +110,11 @@ hz_vector_remove(hz_vector *vec, size_t index);
 /**
  * Gets the index of the first occurence of an element in the vector. Returns
  * true if the element was found; false otherwise. If out_index is not NULL,
- * it is set to the index of the element. This function compares elements
- * based on *reference* equality (by comparing pointers).
+ * it is set to the index of the element if it is found. This function
+ * compares elements based on *reference* equality (by comparing pointers).
  */
 bool
-hz_vector_find(const hz_vector *vec, void *value, size_t *out_index);
+hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index);
 
 /**
  * Returns the internal array buffer that holds the items in the vector. If
