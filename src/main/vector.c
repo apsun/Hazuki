@@ -2,7 +2,6 @@
 #include "hazuki/utils.h"
 #include <stdbool.h>
 #include <stdint.h>
-#include <string.h>
 
 #define INITIAL_CAPACITY 8
 #define SCALING_FACTOR 1.5
@@ -79,9 +78,7 @@ hz_vector_copy(const hz_vector *vec)
     new_vec->size = vec->size;
     new_vec->capacity = vec->capacity;
     new_vec->elements = hz_malloc(new_vec->capacity, sizeof(void *));
-    if (vec->size > 0) {
-        memcpy(new_vec->elements, vec->elements, vec->size * sizeof(void *));
-    }
+    hz_memcpy(new_vec->elements, vec->elements, vec->size, sizeof(void *));
     return new_vec;
 }
 
@@ -173,15 +170,15 @@ hz_vector_insert(hz_vector *vec, size_t index, void *value)
     hz_vector_check_null(vec);
     if (index == vec->size) {
         hz_vector_append(vec, value);
-    } else {
-        hz_vector_check_index(vec, index);
-        hz_vector_grow_if_full(vec);
-        void **elements = vec->elements;
-        size_t num = vec->size - index;
-        memmove(&elements[index + 1], &elements[index], num * sizeof(void *));
-        vec->elements[index] = value;
-        vec->size++;
+        return;
     }
+    hz_vector_check_index(vec, index);
+    hz_vector_grow_if_full(vec);
+    void **elements = vec->elements;
+    size_t num = vec->size - index;
+    hz_memmove(&elements[index + 1], &elements[index], num, sizeof(void *));
+    vec->elements[index] = value;
+    vec->size++;
 }
 
 void *
@@ -192,7 +189,7 @@ hz_vector_remove(hz_vector *vec, size_t index)
     void **elements = vec->elements;
     void *old_value = elements[index];
     size_t num = vec->size - index - 1;
-    memmove(&elements[index], &elements[index + 1], num * sizeof(void *));
+    hz_memmove(&elements[index], &elements[index + 1], num, sizeof(void *));
     vec->size--;
     return old_value;
 }
