@@ -29,6 +29,24 @@ hz_check_size(size_t num, size_t size)
     }
 }
 
+static void
+hz_check_alloc(const void *ptr)
+{
+    if (ptr == NULL) {
+        hz_abort("Allocation returned null");
+    }
+}
+
+static void
+hz_check_copy(const void *dest, const void *src)
+{
+    if (dest == NULL) {
+        hz_abort("Copy destination is null");
+    } else if (src == NULL) {
+        hz_abort("Copy source is null");
+    }
+}
+
 void *
 hz_malloc(size_t num, size_t size)
 {
@@ -37,9 +55,7 @@ hz_malloc(size_t num, size_t size)
         return NULL;
     }
     void *ptr = malloc(num * size);
-    if (ptr == NULL) {
-        hz_abort("malloc returned null");
-    }
+    hz_check_alloc(ptr);
     return ptr;
 }
 
@@ -51,9 +67,7 @@ hz_calloc(size_t num, size_t size)
         return NULL;
     }
     void *ptr = calloc(num, size);
-    if (ptr == NULL) {
-        hz_abort("calloc returned null");
-    }
+    hz_check_alloc(ptr);
     return ptr;
 }
 
@@ -66,9 +80,7 @@ hz_realloc(void *ptr, size_t num, size_t size)
         return NULL;
     }
     ptr = realloc(ptr, num * size);
-    if (ptr == NULL) {
-        hz_abort("realloc returned null");
-    }
+    hz_check_alloc(ptr);
     return ptr;
 }
 
@@ -84,11 +96,8 @@ hz_memcpy(void *dest, const void *src, size_t num, size_t size)
     hz_check_size(num, size);
     if (num == 0) {
         return;
-    } else if (dest == NULL) {
-        hz_abort("memcpy destination is null");
-    } else if (src == NULL) {
-        hz_abort("memcpy source is null");
     }
+    hz_check_copy(dest, src);
     memcpy(dest, src, num * size);
 }
 
@@ -98,22 +107,15 @@ hz_memmove(void *dest, const void *src, size_t num, size_t size)
     hz_check_size(num, size);
     if (num == 0) {
         return;
-    } else if (dest == NULL) {
-        hz_abort("memmove destination is null");
-    } else if (src == NULL) {
-        hz_abort("memmove source is null");
     }
+    hz_check_copy(dest, src);
     memmove(dest, src, num * size);
 }
 
 bool
 hz_strncpy(char *dest, const char *src, size_t count)
 {
-    if (dest == NULL) {
-        hz_abort("strncpy destination is null");
-    } else if (src == NULL) {
-        hz_abort("strncpy source is null");
-    }
+    hz_check_copy(dest, src);
     while (count-- > 0) {
         if ((*dest++ = *src++) == '\0') {
             return true;
