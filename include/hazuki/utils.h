@@ -1,7 +1,6 @@
 #ifndef HAZUKI_UTILS_H_INCLUDED
 #define HAZUKI_UTILS_H_INCLUDED
 
-#include <stdbool.h>
 #include <stddef.h>
 
 /**
@@ -73,16 +72,24 @@ void
 hz_memmove(void *dest, const void *src, size_t num, size_t size);
 
 /**
- * Copies a non-overlapping string from src to dest. Unlike strncpy,
- * this function does not zero out extra space in the destination
- * buffer beyond the null terminator. If there is not enough
- * space in the destination buffer to hold the string (including the
- * null terminator), false is returned; otherwise, true is returned.
- * That is, the destination buffer holds a valid string if and only
- * if the return value is true. If dest or src is NULL, the program
- * is aborted. Behavior is undefined if the memory regions overlap.
+ * Copies a non-overlapping string from src to dest. Unlike strncpy, this
+ * function does *not* zero out extra space in the destination buffer beyond
+ * the null terminator. If there is not enough space in the destination buffer
+ * to hold the string, NULL is returned; otherwise, the address of the *null
+ * terminator* is returned. You may therefore calculate the length of the
+ * copied string using (return value) - (dest), which can be useful when
+ * concatenating strings:
+ *
+ * char buf[100];
+ * char *dest = buf;
+ * while (...) {
+ *     dest = hz_strncpy(dest, src, sizeof(buf) - (dest - buf));
+ * }
+ *
+ * If dest or src is NULL, the program is aborted. Behavior is undefined if
+ * the memory regions overlap.
  */
-bool
+char *
 hz_strncpy(char *dest, const char *src, size_t count);
 
 #endif

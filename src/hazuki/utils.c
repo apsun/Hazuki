@@ -1,6 +1,5 @@
 #include "hazuki/utils.h"
 #include <stdarg.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,8 +8,8 @@
 void
 hz_abort(const char *msg, ...)
 {
-    va_list args;
     fprintf(stderr, "ABORT: ");
+    va_list args;
     va_start(args, msg);
     vfprintf(stderr, msg, args);
     va_end(args);
@@ -112,14 +111,16 @@ hz_memmove(void *dest, const void *src, size_t num, size_t size)
     memmove(dest, src, num * size);
 }
 
-bool
+char *
 hz_strncpy(char *dest, const char *src, size_t count)
 {
     hz_check_copy(dest, src);
     while (count-- > 0) {
-        if ((*dest++ = *src++) == '\0') {
-            return true;
+        if ((*dest = *src) == '\0') {
+            return dest;
         }
+        dest++;
+        src++;
     }
-    return false;
+    return NULL;
 }
