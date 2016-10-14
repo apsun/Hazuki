@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #define INITIAL_CAPACITY 8
+#define SCALING_FACTOR 2
 #define LOAD_FACTOR 0.75
 
 typedef struct hz_map_entry
@@ -65,7 +66,7 @@ hz_map_hash_key(const hz_map *map, const void *key)
 static size_t
 hz_map_get_bucket_index(size_t hash, size_t bucket_count)
 {
-    return hash & (bucket_count - 1);
+    return hash % bucket_count;
 }
 
 static bool
@@ -129,13 +130,12 @@ hz_map_entry_free(hz_map_entry *entry)
 static size_t
 hz_map_next_bucket_count(size_t current_count)
 {
-    if (current_count > SIZE_MAX / 2) {
-        hz_abort("Cannot resize map larger than %zu buckets", current_count);
-        return 0;
+    if (current_count > (size_t)(SIZE_MAX / SCALING_FACTOR)) {
+        return SIZE_MAX;
     } else if (current_count == 0) {
         return INITIAL_CAPACITY;
     } else {
-        return current_count * 2;
+        return current_count * SCALING_FACTOR;
     }
 }
 
@@ -171,6 +171,8 @@ hz_map_should_resize(const hz_map *map, size_t index)
         return true;
     } else if (map->buckets[index] == NULL) {
         return false;
+    } else if (map->bucket_count == SIZE_MAX) {
+        return false;
     } else {
         return map->size >= (size_t)(map->bucket_count * LOAD_FACTOR);
     }
@@ -179,7 +181,10 @@ hz_map_should_resize(const hz_map *map, size_t index)
 static void
 hz_map_add_entry(hz_map *map, size_t hash, void *key, void *value)
 {
-    size_t index = hz_map_get_bucket_index(hash, map->bucket_count);
+    size_t index = 0;
+    if (map->bucket_count != 0) {
+        index = hz_map_get_bucket_index(hash, map->bucket_count);
+    }
     if (hz_map_should_resize(map, index)) {
         hz_map_resize(map);
         index = hz_map_get_bucket_index(hash, map->bucket_count);
