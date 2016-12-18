@@ -111,6 +111,19 @@ hz_memmove(void *dest, const void *src, size_t num, size_t size)
     memmove(dest, src, num * size);
 }
 
+int
+hz_memcmp(const void *a, const void *b, size_t num, size_t size)
+{
+    hz_check_size(num, size);
+    if (num == 0) {
+        return 0;
+    }
+    if (a == NULL || b == NULL) {
+        hz_abort("Comparing null region");
+    }
+    return memcmp(a, b, num * size);
+}
+
 char *
 hz_strncpy(char *dest, const char *src, size_t count)
 {

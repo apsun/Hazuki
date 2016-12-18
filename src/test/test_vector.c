@@ -3,36 +3,50 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef void (*printer)(const void *, FILE *);
+typedef int T;
 
-static void
-print_int(const void *value, FILE *file)
+static hz_vector *
+hz_vector_new_T(void)
 {
-    if (value == NULL) {
-        fprintf(file, "(null)");
-    } else {
-        fprintf(file, "%d", *(int *)value);
-    }
+    return hz_vector_new(sizeof(T));
 }
 
 static void
-hz_vector_print(const hz_vector *vec, FILE *file, printer element_printer)
+hz_vector_insert_T(hz_vector *vec, size_t index, T value)
 {
-    fputc('[', file);
-    size_t size = hz_vector_size(vec);
-    for (size_t i = 0; i < size; ++i) {
-        if (i != 0) {
-            fputs(", ", file);
-        }
-        element_printer(hz_vector_get(vec, i), file);
-    }
-    fputs("]\n", file);
+    hz_vector_insert(vec, index, &value);
+}
+
+static T
+hz_vector_get_T(const hz_vector *vec, size_t index)
+{
+    T value;
+    hz_vector_get(vec, index, &value);
+    return value;
 }
 
 static void
-hz_vector_print_int(const hz_vector *vec)
+hz_vector_set_T(hz_vector *vec, size_t index, T value)
 {
-    hz_vector_print(vec, stdout, print_int);
+    hz_vector_set(vec, index, &value);
+}
+
+static void
+hz_vector_append_T(hz_vector *vec, T value)
+{
+    hz_vector_append(vec, &value);
+}
+
+static void
+hz_vector_resize_T(hz_vector *vec, size_t size, T fill)
+{
+    hz_vector_resize(vec, size, &fill);
+}
+
+static bool
+hz_vector_find_T(const hz_vector *vec, T value, size_t *out_index)
+{
+    return hz_vector_find(vec, &value, out_index);
 }
 
 static void
@@ -54,37 +68,37 @@ hz_vector_assert_capacity(const hz_vector *vec, size_t capacity)
 }
 
 static void
-hz_vector_assert_find(const hz_vector *vec, void *value, size_t index)
+hz_vector_assert_find(const hz_vector *vec, T value, size_t expected_index)
 {
     size_t vec_index;
-    if (!hz_vector_find(vec, value, &vec_index)) {
-        hz_abort("Vector element not found: %p", value);
+    if (!hz_vector_find_T(vec, value, &vec_index)) {
+        hz_abort("Vector element not found");
     }
-    if (vec_index != index) {
-        hz_abort("Vector element (%p) found at [%zu] but expected at [%zu]", value, vec_index, index);
+    if (vec_index != expected_index) {
+        hz_abort("Vector element found at [%zu] but expected at [%zu]", vec_index, expected_index);
     }
 }
 
 static void
-hz_vector_assert_not_find(const hz_vector *vec, void *value)
+hz_vector_assert_not_find(const hz_vector *vec, T value)
 {
     size_t vec_index;
-    if (hz_vector_find(vec, value, &vec_index)) {
-        hz_abort("Vector element (%p) found at [%zu] but shouldn't exist", value, vec_index);
+    if (hz_vector_find_T(vec, value, &vec_index)) {
+        hz_abort("Vector element found at [%zu] but shouldn't exist", vec_index);
     }
 }
 
 static void
-hz_vector_assert_get(const hz_vector *vec, size_t index, const void *value)
+hz_vector_assert_get(const hz_vector *vec, size_t index, T expected_value)
 {
-    void *vec_item = hz_vector_get(vec, index);
-    if (vec_item != value) {
-        hz_abort("Vector element at [%zu] (%p) does not match expected value (%p)", index, vec_item, value);
+    T value = hz_vector_get_T(vec, index);
+    if (value != expected_value) {
+        hz_abort("Vector element at [%zu] does not match expected value", index);
     }
 }
 
 static void
-hz_vector_assert_eq(const hz_vector *vec, const void **arr, size_t size)
+hz_vector_assert_eq(const hz_vector *vec, const T *arr, size_t size)
 {
     hz_vector_assert_size(vec, size);
     for (size_t i = 0; i < size; ++i) {
@@ -92,117 +106,112 @@ hz_vector_assert_eq(const hz_vector *vec, const void **arr, size_t size)
     }
 }
 
+static void
+test_vector_append(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_append_T(vec, 0);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 2);
+    T expected[] = { 0, 1, 2 };
+    hz_vector_assert_eq(vec, expected, 3);
+}
+
+static void
+test_vector_insert(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_insert_T(vec, 0, 0);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 2);
+    hz_vector_insert_T(vec, 1, 3);
+    hz_vector_insert_T(vec, 1, 4);
+    hz_vector_insert_T(vec, 5, 5);
+    hz_vector_insert_T(vec, 6, 6);
+    T expected[] = { 0, 4, 3, 1, 2, 5, 6 };
+    hz_vector_assert_eq(vec, expected, 7);
+}
+
+static void
+test_vector_remove(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_append_T(vec, 0);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 2);
+    hz_vector_append_T(vec, 3);
+    hz_vector_append_T(vec, 4);
+    hz_vector_append_T(vec, 5);
+    hz_vector_append_T(vec, 6);
+    hz_vector_remove(vec, 0);
+    hz_vector_remove(vec, 1);
+    T expected[] = { 1, 3, 4, 5, 6 };
+    hz_vector_assert_eq(vec, expected, 5);
+    hz_vector_clear(vec);
+    hz_vector_assert_eq(vec, NULL, 0);
+}
+
+static void
+test_vector_find(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_append_T(vec, 0);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 0);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 4);
+    hz_vector_append_T(vec, 5);
+    hz_vector_append_T(vec, 6);
+    hz_vector_assert_find(vec, 0, 0);
+    hz_vector_assert_find(vec, 1, 1);
+    hz_vector_assert_find(vec, 4, 4);
+    hz_vector_assert_not_find(vec, 7);
+}
+
+static void
+test_vector_large(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    for (int i = 0; i < 10000; ++i) {
+        hz_vector_insert_T(vec, 0, i);
+    }
+    hz_vector_assert_size(vec, 10000);
+    for (int i = 0; i < 10000; ++i) {
+        hz_vector_assert_get(vec, i, 10000 - i - 1);
+    }
+}
+
+static void
+test_vector_resize(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_resize_T(vec, 5, 42);
+    T expected[] = { 42, 42, 42, 42, 42 };
+    hz_vector_assert_eq(vec, expected, 5);
+}
+
+static void
+test_vector_data(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_resize_T(vec, 8, 42);
+    T *data = hz_vector_data(vec);
+    for (int i = 0; i < 4; ++i) {
+        data[i] = i;
+    }
+    T expected[] = { 0, 1, 2, 3, 42, 42, 42, 42 };
+    hz_vector_assert_eq(vec, expected, 8);
+}
+
 void
 test_vector(void)
 {
-    int test_data[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-
-    // Append and insert test
-    hz_vector *vec1 = hz_vector_new();
-    hz_vector_append(vec1, &test_data[1]);
-    hz_vector_append(vec1, NULL);
-    hz_vector_append(vec1, &test_data[0]);
-    hz_vector_insert(vec1, 1, &test_data[6]);
-    hz_vector_insert(vec1, 4, &test_data[7]);
-    hz_vector_insert(vec1, 5, NULL);
-    hz_vector_insert(vec1, 6, &test_data[9]);
-    void *vec1_expected[] = {
-        &test_data[1], 
-        &test_data[6], 
-        NULL, 
-        &test_data[0],
-        &test_data[7], 
-        NULL, 
-        &test_data[9]
-    };
-    hz_vector_assert_eq(vec1, vec1_expected, 7);
-    hz_vector_print_int(vec1);
-
-    // Removal test
-    hz_vector *vec2 = hz_vector_copy(vec1);
-    hz_vector_free(vec1);
-    hz_vector_append(vec2, &test_data[4]);
-    hz_vector_append(vec2, &test_data[1]);
-    hz_vector_remove(vec2, 0);
-    hz_vector_remove(vec2, 0);
-    void *vec2_expected[] = {
-        NULL,
-        &test_data[0], 
-        &test_data[7],
-        NULL,
-        &test_data[9],
-        &test_data[4],
-        &test_data[1]
-    };
-    hz_vector_assert_eq(vec2, vec2_expected, 7);
-    hz_vector_print_int(vec2);
-
-    // Capacity reserve test
-    hz_vector *vec3 = hz_vector_copy(vec2);
-    hz_vector_free(vec2);
-    hz_vector_reserve(vec3, 500);
-    hz_vector_remove(vec3, 0);
-    hz_vector_insert(vec3, 0, &test_data[1]);
-    void *vec3_expected[] = {
-        &test_data[1],
-        &test_data[0],
-        &test_data[7],
-        NULL,
-        &test_data[9],
-        &test_data[4],
-        &test_data[1]
-    };
-    hz_vector_assert_capacity(vec3, 500);
-    hz_vector_assert_eq(vec3, vec3_expected, 7);
-    hz_vector_print_int(vec3);
-
-    // Value find test
-    hz_vector *vec4 = hz_vector_copy(vec3);
-    hz_vector_free(vec3);
-    hz_vector_assert_find(vec4, &test_data[9], 4);
-    hz_vector_assert_find(vec4, NULL, 3);
-    hz_vector_assert_find(vec4, &test_data[1], 0);
-    hz_vector_assert_not_find(vec4, &test_data[8]);
-    hz_vector_trim(vec4);
-    hz_vector_assert_capacity(vec4, 7);
-    hz_vector_print_int(vec4);
-
-    // Large vector and auto-resize test
-    hz_vector *vec5 = hz_vector_copy(vec4);
-    hz_vector_free(vec4);
-    hz_vector_clear(vec5);
-    int test_data2[10000];
-    for (int i = 0; i < 10000; ++i) {
-        test_data2[i] = i;
-        hz_vector_insert(vec5, 0, &test_data2[i]);
-    }
-    hz_vector_assert_size(vec5, 10000);
-    for (int i = 0; i < 10000; ++i) {
-        hz_vector_assert_get(vec5, i, &test_data2[10000 - i - 1]);
-    }
-
-    // Vector resize test
-    hz_vector *vec6 = hz_vector_copy(vec5);
-    hz_vector_free(vec5);
-    hz_vector_clear(vec6);
-    int dummy1 = 0, dummy2 = 1;
-    hz_vector_resize(vec6, 10, &dummy2);
-    void **buf6 = hz_vector_data(vec6);
-    for (int i = 0; i < 5; ++i) {
-        buf6[i] = ((i & 1) == 0) ? &dummy1 : &dummy2;
-    }
-    hz_vector_print_int(vec6);
-    hz_vector_resize(vec6, 5, NULL);
-    void *vec6_expected[] = {
-        &dummy1,
-        &dummy2,
-        &dummy1,
-        &dummy2,
-        &dummy1
-    };
-    hz_vector_assert_eq(vec6, vec6_expected, 5);
-    hz_vector_print_int(vec6);
-    hz_vector_free(vec6);
-
+    test_vector_append();
+    test_vector_insert();
+    test_vector_remove();
+    test_vector_find();
+    test_vector_large();
+    test_vector_resize();
+    test_vector_data();
     printf("All vector tests passed!\n");
 }

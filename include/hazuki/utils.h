@@ -72,6 +72,16 @@ void
 hz_memmove(void *dest, const void *src, size_t num, size_t size);
 
 /**
+ * Compares two regions of memory. If num == 0, a and/or b may be NULL.
+ * The unit size must not be 0. If num != 0,
+ * hz_memcmp(a, b, num, sizeof(T)) is equivalent to
+ * memcmp(a, b, num * sizeof(T)), except that if a or b is NULL or
+ * num * sizeof(T) overflows, the program is aborted.
+ */
+int
+hz_memcmp(const void *a, const void *b, size_t num, size_t size);
+
+/**
  * Copies a non-overlapping string from src to dest. Unlike strncpy, this
  * function does *not* zero out extra space in the destination buffer beyond
  * the null terminator. If there is not enough space in the destination buffer

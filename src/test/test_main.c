@@ -8,15 +8,9 @@ extern void test_vector(void);
 int
 main()
 {
-    test_utils();
-    printf("\n");
-
-    test_map();
-    printf("\n");
-
     test_vector();
-    printf("\n");
-
+    test_map();
+    test_utils();
     printf("All tests passed!\n");
     getchar();
     return 0;

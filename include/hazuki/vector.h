@@ -7,11 +7,11 @@
 typedef struct hz_vector hz_vector;
 
 /**
- * Creates a new empty vector. You must free the vector using
- * hz_vector_free(hz_vector *).
+ * Creates a new empty vector with the specified element size. You must free
+ * the vector using hz_vector_free(hz_vector *).
  */
 hz_vector *
-hz_vector_new(void);
+hz_vector_new(size_t element_size);
 
 /**
  * Creates a new vector by copying an existing one. You must free the vector
@@ -47,7 +47,7 @@ hz_vector_capacity(const hz_vector *vec);
  * vector will be truncated.
  */
 void
-hz_vector_resize(hz_vector *vec, size_t size, void *fill);
+hz_vector_resize(hz_vector *vec, size_t size, const void *fill);
 
 /**
  * Increases the vector's capacity to at least the specified value. If the new
@@ -75,16 +75,15 @@ hz_vector_clear(hz_vector *vec);
  * Gets the element in the vector at the given index. The index must be less
  * than the size of the vector.
  */
-void *
-hz_vector_get(const hz_vector *vec, size_t index);
+void
+hz_vector_get(const hz_vector *vec, size_t index, void *out_value);
 
 /**
- * Sets the element in the vector at the given index and returns the element
- * originally at that index. The index must be less than the size of the
- * vector.
+ * Sets the element in the vector at the given index. The index must be less
+ * than the size of the vector.
  */
-void *
-hz_vector_set(hz_vector *vec, size_t index, void *value);
+void
+hz_vector_set(hz_vector *vec, size_t index, const void *value);
 
 /**
  * Appends an element to the end of the vector.
@@ -98,13 +97,13 @@ hz_vector_append(hz_vector *vec, void *value);
  * this is equivalent to calling hz_vector_append(hz_vector *, void *).
  */
 void
-hz_vector_insert(hz_vector *vec, size_t index, void *value);
+hz_vector_insert(hz_vector *vec, size_t index, const void *value);
 
 /**
- * Removes and returns the element from the vector at the given index. The
+ * Removes the element from the vector at the given index. The
  * index must be less than the size of the vector.
  */
-void *
+void
 hz_vector_remove(hz_vector *vec, size_t index);
 
 /**
@@ -125,7 +124,7 @@ hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index);
  * invalidated and using it results in undefined behavior. You must not free
  * the buffer.
  */
-void **
+void *
 hz_vector_data(hz_vector *vec);
 
 #endif
