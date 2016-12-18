@@ -172,7 +172,7 @@ hz_map_assert_it_eq(const hz_map *map, TEntry *entries, size_t count)
 }
 
 static void
-test_map_insert(void)
+test_map_put(void)
 {
     hz_map *map = hz_map_new_T(key_hash_T);
     hz_map_assert_put_new(map, 0, "zero");
@@ -180,6 +180,8 @@ test_map_insert(void)
     hz_map_assert_put_new(map, 2, "two");
     hz_map_assert_put_new(map, 3, "three");
     hz_map_assert_put_new(map, 4, "four");
+    hz_map_assert_not_get(map, 5);
+    hz_map_assert_not_get(map, 50);
     TEntry entries[] = {
         { 0, "zero" },
         { 1, "one" },
@@ -319,7 +321,7 @@ test_map_copy(void)
 void
 test_map(void)
 {
-    test_map_insert();
+    test_map_put();
     test_map_remove();
     test_map_clear();
     test_map_large();
