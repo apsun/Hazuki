@@ -404,18 +404,18 @@ hz_map_remove(hz_map *map, const void *key, void *out_value)
     size_t index = hz_map_get_bucket_index(hash, map->bucket_count);
     hz_map_entry **entry = &map->buckets[index];
     while (*entry != NULL) {
-        if (hz_map_entry_matches(map, *entry, hash, key)) {
+        hz_map_entry *curr = *entry;
+        if (hz_map_entry_matches(map, curr, hash, key)) {
             if (out_value != NULL) {
-                hz_map_entry_get_value(map, *entry, out_value);
+                hz_map_entry_get_value(map, curr, out_value);
             }
-            hz_map_entry *curr = *entry;
-            *entry = (*entry)->next;
+            *entry = curr->next;
             hz_map_entry_free(curr);
             hz_map_touch(map);
             map->size--;
             return true;
         }
-        entry = &(*entry)->next;
+        entry = &curr->next;
     }
     return false;
 }
