@@ -15,6 +15,12 @@ Core development principles:
 - No global state
 - Minimize undefined behavior
 
+Note that unlike many C libraries, Hazuki is unforgiving of
+invalid arguments - violating function contracts will result
+in the immediate termination of your program using `abort()`.
+This is necessary to maintain a simple API without excessive
+return value checking.
+
 Named after [Hazuki Tachibana](https://vndb.org/c20285).
 
 ## Contents
