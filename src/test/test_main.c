@@ -6,7 +6,7 @@ extern void test_map(void);
 extern void test_vector(void);
 
 int
-main()
+main(void)
 {
     test_vector();
     test_map();

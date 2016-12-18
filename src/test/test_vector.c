@@ -115,6 +115,7 @@ test_vector_append(void)
     hz_vector_append_T(vec, 2);
     T expected[] = { 0, 1, 2 };
     hz_vector_assert_eq(vec, expected, 3);
+    hz_vector_free(vec);
 }
 
 static void
@@ -130,6 +131,7 @@ test_vector_insert(void)
     hz_vector_insert_T(vec, 6, 6);
     T expected[] = { 0, 4, 3, 1, 2, 5, 6 };
     hz_vector_assert_eq(vec, expected, 7);
+    hz_vector_free(vec);
 }
 
 static void
@@ -149,6 +151,7 @@ test_vector_remove(void)
     hz_vector_assert_eq(vec, expected, 5);
     hz_vector_clear(vec);
     hz_vector_assert_eq(vec, NULL, 0);
+    hz_vector_free(vec);
 }
 
 static void
@@ -166,6 +169,7 @@ test_vector_find(void)
     hz_vector_assert_find(vec, 1, 1);
     hz_vector_assert_find(vec, 4, 4);
     hz_vector_assert_not_find(vec, 7);
+    hz_vector_free(vec);
 }
 
 static void
@@ -179,6 +183,7 @@ test_vector_large(void)
     for (int i = 0; i < 10000; ++i) {
         hz_vector_assert_get(vec, i, 10000 - i - 1);
     }
+    hz_vector_free(vec);
 }
 
 static void
@@ -188,6 +193,7 @@ test_vector_resize(void)
     hz_vector_resize_T(vec, 5, 42);
     T expected[] = { 42, 42, 42, 42, 42 };
     hz_vector_assert_eq(vec, expected, 5);
+    hz_vector_free(vec);
 }
 
 static void
@@ -201,6 +207,7 @@ test_vector_data(void)
     }
     T expected[] = { 0, 1, 2, 3, 42, 42, 42, 42 };
     hz_vector_assert_eq(vec, expected, 8);
+    hz_vector_free(vec);
 }
 
 void

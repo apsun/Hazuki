@@ -37,39 +37,69 @@ hz_assert_str_eq(const char *a, const char *b)
     }
 }
 
+static void
+test_utils_strncpy_basic(void)
+{
+    char buf[100] = "Some very long string";
+    hz_assert_strncpy_ok(buf, "Test", 100);
+    hz_assert_char(buf, 0, 'T');
+    hz_assert_char(buf, 3, 't');
+    hz_assert_char(buf, 4, '\0');
+    hz_assert_char(buf, 5, 'v');
+    hz_assert_char(buf, 6, 'e');
+}
+
+static void
+test_utils_strncpy_overflow(void)
+{
+    char buf[10] = "AAAAAAAAA";
+    hz_assert_strncpy_err(buf, "LONG LONG LONG STRING", 10);
+}
+
+static void
+test_utils_strncpy_1(void)
+{
+    char buf[1];
+    hz_assert_strncpy_ok(buf, "", 1);
+    hz_assert_char(buf, 0, '\0');
+}
+
+static void
+test_utils_strncpy_0(void)
+{
+    char buf[1];
+    hz_assert_strncpy_err(buf, "", 0);
+}
+
+static void
+test_utils_strncpy_concat(void)
+{
+    char buf[10] = "ABCDEFGHI";
+    char *next = hz_assert_strncpy_ok(buf, "Megane", 10);
+    hz_assert_strncpy_ok(next, "Poi", 10 - (next - buf));
+    hz_assert_str_eq(buf, "MeganePoi");
+}
+
+static void
+test_utils_strncpy_concat_loop(void)
+{
+    char buf[100];
+    char *dest = buf;
+    char *strs[4] = { "Alpha", "Beta", "Charlie", "Delta" };
+    for (int i = 0; i < 4; ++i) {
+        dest = hz_assert_strncpy_ok(dest, strs[i], sizeof(buf) - (dest - buf));
+    }
+    hz_assert_str_eq(buf, "AlphaBetaCharlieDelta");
+}
+
 void
 test_utils(void)
 {
-    char buf1[100] = "Some very long string";
-    hz_assert_strncpy_ok(buf1, "Test", 100);
-    hz_assert_char(buf1, 0, 'T');
-    hz_assert_char(buf1, 3, 't');
-    hz_assert_char(buf1, 4, '\0');
-    hz_assert_char(buf1, 5, 'v');
-    hz_assert_char(buf1, 6, 'e');
-
-    char buf2[10] = "AAAAAAAAA";
-    hz_assert_strncpy_err(buf2, "LONG LONG LONG STRING", 10);
-
-    char buf3[1];
-    hz_assert_strncpy_ok(buf3, "", 1);
-    hz_assert_char(buf3, 0, '\0');
-
-    char buf4[1];
-    hz_assert_strncpy_err(buf4, "", 0);
-
-    char buf5[10] = "ABCDEFGHI";
-    char *next = hz_assert_strncpy_ok(buf5, "Megane", 10);
-    hz_assert_strncpy_ok(next, "Poi", 10 - (next - buf5));
-    hz_assert_str_eq(buf5, "MeganePoi");
-
-    char buf6[100];
-    char *dest6 = buf6;
-    char *strs6[4] = { "Alpha", "Beta", "Charlie", "Delta" };
-    for (int i = 0; i < 4; ++i) {
-        dest6 = hz_assert_strncpy_ok(dest6, strs6[i], sizeof(buf6) - (dest6 - buf6));
-    }
-    hz_assert_str_eq(buf6, "AlphaBetaCharlieDelta");
-
+    test_utils_strncpy_basic();
+    test_utils_strncpy_overflow();
+    test_utils_strncpy_1();
+    test_utils_strncpy_0();
+    test_utils_strncpy_concat();
+    test_utils_strncpy_concat_loop();
     printf("All utils tests passed!\n");
 }

@@ -16,37 +16,37 @@ typedef size_t (*hz_map_hash_func)(const void *key);
 
 /**
  * Comparator function for hz_map. Returns zero if the inputs are
- * equal, and non-zero otherwise. If a == b, this function must
- * return 0. This function must always return the same value for
- * any particular pair of inputs.
+ * equal, and non-zero otherwise. This function must always return
+ * the same value for any particular pair of inputs.
  */
 typedef int (*hz_map_cmp_func)(const void *a, const void *b);
 
 /**
- * Creates a new empty hashmap using the given hash and comparator
- * functions. You must free the hashmap using hz_map_free(hz_map *).
+ * Creates a new empty hashmap with the given key and value sizes and
+ * hash and comparator functions. You must free the returned hashmap
+ * using hz_map_free().
  */
 hz_map *
-hz_map_new(hz_map_hash_func hash, hz_map_cmp_func cmp);
+hz_map_new(size_t key_size, size_t value_size,
+           hz_map_hash_func hash_func, hz_map_cmp_func cmp_func);
 
 /**
  * Creates a new hashmap by copying an existing one.
- * You must free the hashmap using hz_map_free(hz_map *).
+ * You must free the returned hashmap using hz_map_free().
  */
 hz_map *
 hz_map_copy(const hz_map *map);
 
 /**
- * Frees a hashmap created by hz_map_new(hz_map_hash_func, hz_map_cmp_func)
- * or hz_map_copy(hz_map *). This does *NOT* free the elements contained
- * in the hashmap. Using the hashmap after deletion results in undefined
- * behavior.
+ * Frees a hashmap created by hz_map_new() or hz_map_copy(). This does
+ * *NOT* free the elements contained in the hashmap. Using the hashmap
+ * after deletion results in undefined behavior.
  */
 void
 hz_map_free(hz_map *map);
 
 /**
- * Gets the number of key-value pairs in the hashmap.
+ * Gets the number of entries in the hashmap.
  */
 size_t
 hz_map_size(const hz_map *map);
@@ -59,40 +59,34 @@ void
 hz_map_clear(hz_map *map);
 
 /**
- * Returns true if the key exists in the hashmap; false otherwise.
- * The key may be NULL.
+ * Gets the value associated with the given key. Returns true if the entry
+ * exists in the map, and false otherwise. If the entry exists and out_value
+ * is not NULL, the value is written to out_value.
  */
 bool
-hz_map_contains(const hz_map *map, const void *key);
+hz_map_get(const hz_map *map, const void *key, void *out_value);
 
 /**
- * Gets the value associated with the given key. The key may be NULL.
- * If the key is not found in the hashmap, NULL is returned.
+ * Sets the value associated with the given key. Returns true if this replaces
+ * an existing value, and false otherwise. If a value was replaced and
+ * out_value is not NULL, the previous value is written to out_value.
  */
-void *
-hz_map_get(const hz_map *map, const void *key);
+bool
+hz_map_put(hz_map *map, const void *key, const void *value, void *out_value);
 
 /**
- * Sets the value associated with the given key. The key and/or value may be
- * NULL. Returns the previous value associated with the key, or NULL if there
- * was originally no associated value. Deallocating the key or value while
- * it is in the hashmap results in undefined behavior.
+ * Removes the entry associated with the given key. Returns true if
+ * the entry exists in the map, and false otherwise. If the entry exists
+ * and out_value is not NULL, the removed value is written to out_value.
  */
-void *
-hz_map_put(hz_map *map, void *key, void *value);
+bool
+hz_map_remove(hz_map *map, const void *key, void *out_value);
 
 /**
- * Removes a key-value pair from the hashmap and returns
- * the value associated with the key. The key may be NULL.
- */
-void *
-hz_map_remove(hz_map *map, const void *key);
-
-/**
- * Returns an iterator that can be used to iterate over the elements in
+ * Creates an iterator that can be used to iterate over the elements in
  * the hashmap. The iterator is invalidated after any modifications to
  * the hashmap; continuing to use it results in an error. You must free
- * the iterator using hz_map_iterator_free(hz_map_iterator *).
+ * the returned iterator using hz_map_iterator_free().
  */
 hz_map_iterator *
 hz_map_iterator_new(const hz_map *map);
@@ -112,6 +106,6 @@ hz_map_iterator_free(hz_map_iterator *it);
  * pass NULL for the key or value parameters to ignore their value.
  */
 bool
-hz_map_iterator_next(hz_map_iterator *it, void **key, void **value);
+hz_map_iterator_next(hz_map_iterator *it, void *key, void *value);
 
 #endif

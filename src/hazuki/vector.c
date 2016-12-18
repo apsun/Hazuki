@@ -8,9 +8,9 @@
 
 struct hz_vector
 {
+    size_t element_size;
     size_t size;
     size_t capacity;
-    size_t element_size;
     char *buffer;
 };
 

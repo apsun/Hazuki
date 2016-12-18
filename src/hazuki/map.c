@@ -11,19 +11,20 @@
 
 typedef struct hz_map_entry
 {
-    size_t hash;
-    void *key;
-    void *value;
     struct hz_map_entry *next;
+    size_t hash;
+    char buffer[];
 } hz_map_entry;
 
 struct hz_map
 {
+    size_t key_size;
+    size_t value_size;
+    hz_map_hash_func hash_func;
+    hz_map_cmp_func cmp_func;
     size_t size;
     size_t bucket_count;
     hz_map_entry **buckets;
-    hz_map_hash_func hash_func;
-    hz_map_cmp_func cmp_func;
     unsigned int mod_count;
 };
 
@@ -40,6 +41,22 @@ hz_map_check_null(const hz_map *map)
 {
     if (map == NULL) {
         hz_abort("Map is null");
+    }
+}
+
+static void
+hz_map_check_key(const void *key)
+{
+    if (key == NULL) {
+        hz_abort("Key is null");
+    }
+}
+
+static void
+hz_map_check_value(const void *value)
+{
+    if (value == NULL) {
+        hz_abort("Value is null");
     }
 }
 
@@ -69,12 +86,62 @@ hz_map_get_bucket_index(size_t hash, size_t bucket_count)
     return hash % bucket_count;
 }
 
+static void *
+hz_map_entry_key_offset(const hz_map *map, const hz_map_entry *entry)
+{
+    (void)map;
+    return (void *)(entry->buffer);
+}
+
+static void *
+hz_map_entry_value_offset(const hz_map *map, const hz_map_entry *entry)
+{
+    return (void *)(entry->buffer + map->key_size);
+}
+
+static void
+hz_map_entry_get_key(const hz_map *map, hz_map_entry *entry,
+                     void *out_key)
+{
+    void *key = hz_map_entry_key_offset(map, entry);
+    hz_memcpy(out_key, key, 1, map->key_size);
+}
+
+static void
+hz_map_entry_get_value(const hz_map *map, hz_map_entry *entry,
+                       void *out_value)
+{
+    void *value = hz_map_entry_value_offset(map, entry);
+    hz_memcpy(out_value, value, 1, map->value_size);
+}
+
+static void
+hz_map_entry_set_key(const hz_map *map, hz_map_entry *entry,
+                     const void *new_key)
+{
+    void *key = hz_map_entry_key_offset(map, entry);
+    hz_memcpy(key, new_key, 1, map->key_size);
+}
+
+static void
+hz_map_entry_set_value(const hz_map *map, hz_map_entry *entry,
+                       const void *new_value)
+{
+    void *value = hz_map_entry_value_offset(map, entry);
+    hz_memcpy(value, new_value, 1, map->value_size);
+}
+
 static bool
-hz_map_entry_matches(const hz_map *map, hz_map_entry *entry,
+hz_map_entry_matches(const hz_map *map, const hz_map_entry *entry,
                      size_t hash, const void *key)
 {
-    return (entry->hash == hash) &&
-           (entry->key == key || map->cmp_func(entry->key, key) == 0);
+    if (entry->hash != hash) {
+        return false;
+    }
+    if (map->cmp_func(hz_map_entry_key_offset(map, entry), key) != 0) {
+        return false;
+    }
+    return true;
 }
 
 static hz_map_entry *
@@ -95,26 +162,30 @@ hz_map_find_entry(const hz_map *map, size_t hash, const void *key)
 }
 
 static hz_map_entry *
-hz_map_entry_new(size_t hash, void *key, void *value)
+hz_map_entry_new(const hz_map *map, size_t hash,
+                 const void *key, const void *value)
 {
-    hz_map_entry *entry = hz_malloc(1, sizeof(hz_map_entry));
-    entry->hash = hash;
-    entry->key = key;
-    entry->value = value;
+    size_t size = sizeof(hz_map_entry) + map->key_size + map->value_size;
+    hz_map_entry *entry = hz_malloc(1, size);
     entry->next = NULL;
+    entry->hash = hash;
+    hz_map_entry_set_key(map, entry, key);
+    hz_map_entry_set_value(map, entry, value);
     return entry;
 }
 
 static hz_map_entry *
-hz_map_entry_copy(hz_map_entry *entry)
+hz_map_entry_copy(const hz_map *map, const hz_map_entry *entry)
 {
     hz_map_entry *prev = NULL;
     while (entry != NULL) {
         hz_map_entry *curr = hz_malloc(1, sizeof(hz_map_entry));
-        curr->hash = entry->hash;
-        curr->key = entry->key;
-        curr->value = entry->value;
         curr->next = prev;
+        curr->hash = entry->hash;
+        void *src_key = hz_map_entry_key_offset(map, entry);
+        void *src_value = hz_map_entry_value_offset(map, entry);
+        hz_map_entry_set_key(map, curr, src_key);
+        hz_map_entry_set_value(map, curr, src_value);
         prev = curr;
         entry = entry->next;
     }
@@ -179,7 +250,7 @@ hz_map_should_resize(const hz_map *map, size_t index)
 }
 
 static void
-hz_map_add_entry(hz_map *map, size_t hash, void *key, void *value)
+hz_map_add_entry(hz_map *map, size_t hash, const void *key, const void *value)
 {
     size_t index = 0;
     if (map->bucket_count != 0) {
@@ -189,7 +260,7 @@ hz_map_add_entry(hz_map *map, size_t hash, void *key, void *value)
         hz_map_resize(map);
         index = hz_map_get_bucket_index(hash, map->bucket_count);
     }
-    hz_map_entry *new_entry = hz_map_entry_new(hash, key, value);
+    hz_map_entry *new_entry = hz_map_entry_new(map, hash, key, value);
     hz_map_entry *old_head = map->buckets[index];
     new_entry->next = old_head;
     map->buckets[index] = new_entry;
@@ -211,17 +282,20 @@ hz_map_free_buckets(hz_map *map)
 }
 
 hz_map *
-hz_map_new(hz_map_hash_func hash, hz_map_cmp_func cmp)
+hz_map_new(size_t key_size, size_t value_size,
+           hz_map_hash_func hash_func, hz_map_cmp_func cmp_func)
 {
-    if (hash == NULL) {
+    if (hash_func == NULL) {
         hz_abort("Key hash function is null");
-    } else if (cmp == NULL) {
+    } else if (cmp_func == NULL) {
         hz_abort("Key comparator function is null");
     }
     hz_map *map = hz_malloc(1, sizeof(hz_map));
+    map->key_size = key_size;
+    map->value_size = value_size;
+    map->hash_func = hash_func;
+    map->cmp_func = cmp_func;
     map->size = 0;
-    map->hash_func = hash;
-    map->cmp_func = cmp;
     map->bucket_count = 0;
     map->buckets = NULL;
     map->mod_count = 0;
@@ -239,7 +313,7 @@ hz_map_copy(const hz_map *map)
     new_map->bucket_count = map->bucket_count;
     new_map->buckets = hz_malloc(map->bucket_count, sizeof(hz_map_entry *));
     for (size_t i = 0; i < map->bucket_count; ++i) {
-        new_map->buckets[i] = hz_map_entry_copy(map->buckets[i]);
+        new_map->buckets[i] = hz_map_entry_copy(map, map->buckets[i]);
     }
     return new_map;
 }
@@ -271,71 +345,69 @@ hz_map_clear(hz_map *map)
 }
 
 bool
-hz_map_contains(const hz_map *map, const void *key)
+hz_map_get(const hz_map *map, const void *key, void *out_value)
 {
     hz_map_check_null(map);
-    size_t hash = hz_map_hash_key(map, key);
-    return hz_map_find_entry(map, hash, key) != NULL;
-}
-
-void *
-hz_map_get(const hz_map *map, const void *key)
-{
-    hz_map_check_null(map);
+    hz_map_check_key(key);
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
     if (entry != NULL) {
-        return entry->value;
+        if (out_value != NULL) {
+            hz_map_entry_get_value(map, entry, out_value);
+        }
+        return true;
     } else {
-        return NULL;
+        return false;
     }
 }
 
-void *
-hz_map_put(hz_map *map, void *key, void *value)
+bool
+hz_map_put(hz_map *map, const void *key, const void *value, void *out_value)
 {
     hz_map_check_null(map);
+    hz_map_check_key(key);
+    hz_map_check_value(value);
     hz_map_touch(map);
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
     if (entry != NULL) {
-        void *old_value = entry->value;
-        entry->value = value;
-        return old_value;
+        if (out_value != NULL) {
+            hz_map_entry_get_value(map, entry, out_value);
+        }
+        hz_map_entry_set_value(map, entry, value);
+        return true;
     } else {
         hz_map_add_entry(map, hash, key, value);
-        return NULL;
+        return false;
     }
 }
 
-void *
-hz_map_remove(hz_map *map, const void *key)
+bool
+hz_map_remove(hz_map *map, const void *key, void *out_value)
 {
     hz_map_check_null(map);
+    hz_map_check_key(key);
     if (map->size == 0) {
-        return NULL;
+        return false;
     }
     size_t hash = hz_map_hash_key(map, key);
     size_t index = hz_map_get_bucket_index(hash, map->bucket_count);
-    hz_map_entry *prev = NULL;
-    hz_map_entry *curr = map->buckets[index];
-    while (curr != NULL) {
-        if (hz_map_entry_matches(map, curr, hash, key)) {
-            if (prev == NULL) {
-                map->buckets[index] = curr->next;
-            } else {
-                prev->next = curr->next;
+    hz_map_entry **entry = &map->buckets[index];
+    while (*entry != NULL) {
+        if (hz_map_entry_matches(map, *entry, hash, key)) {
+            if (out_value != NULL) {
+                hz_map_entry_get_value(map, *entry, out_value);
             }
-            void *value = curr->value;
+            hz_map_entry *curr = *entry;
+            *entry = (*entry)->next;
             hz_map_entry_free(curr);
             hz_map_touch(map);
             map->size--;
-            return value;
+            return true;
         }
-        prev = curr;
-        curr = curr->next;
+        entry = &(*entry)->next;
     }
-    return NULL;
+    return false;
 }
 
 hz_map_iterator *
@@ -358,7 +430,7 @@ hz_map_iterator_free(hz_map_iterator *it)
 }
 
 bool
-hz_map_iterator_next(hz_map_iterator *it, void **key, void **value)
+hz_map_iterator_next(hz_map_iterator *it, void *key, void *value)
 {
     hz_map_iterator_check_null(it);
     if (it->mod_count != it->map->mod_count) {
@@ -371,10 +443,10 @@ hz_map_iterator_next(hz_map_iterator *it, void **key, void **value)
         it->current_entry = it->map->buckets[it->bucket_index++];
     }
     if (key != NULL) {
-        *key = it->current_entry->key;
+        hz_map_entry_get_key(it->map, it->current_entry, key);
     }
     if (value != NULL) {
-        *value = it->current_entry->value;
+        hz_map_entry_get_value(it->map, it->current_entry, value);
     }
     it->current_entry = it->current_entry->next;
     return true;
