@@ -86,6 +86,14 @@ hz_map_get_bucket_index(size_t hash, size_t bucket_count)
     return hash % bucket_count;
 }
 
+static hz_map_entry *
+hz_map_entry_alloc(const hz_map *map)
+{
+    size_t size = sizeof(hz_map_entry) + map->key_size + map->value_size;
+    hz_map_entry *entry = hz_malloc(1, size);
+    return entry;
+}
+
 static void *
 hz_map_entry_key_offset(const hz_map *map, const hz_map_entry *entry)
 {
@@ -165,8 +173,7 @@ static hz_map_entry *
 hz_map_entry_new(const hz_map *map, size_t hash,
                  const void *key, const void *value)
 {
-    size_t size = sizeof(hz_map_entry) + map->key_size + map->value_size;
-    hz_map_entry *entry = hz_malloc(1, size);
+    hz_map_entry *entry = hz_map_entry_alloc(map);
     entry->next = NULL;
     entry->hash = hash;
     hz_map_entry_set_key(map, entry, key);
@@ -179,7 +186,7 @@ hz_map_entry_copy(const hz_map *map, const hz_map_entry *entry)
 {
     hz_map_entry *prev = NULL;
     while (entry != NULL) {
-        hz_map_entry *curr = hz_malloc(1, sizeof(hz_map_entry));
+        hz_map_entry *curr = hz_map_entry_alloc(map);
         curr->next = prev;
         curr->hash = entry->hash;
         void *src_key = hz_map_entry_key_offset(map, entry);
@@ -307,14 +314,17 @@ hz_map_copy(const hz_map *map)
 {
     hz_map_check_null(map);
     hz_map *new_map = hz_malloc(1, sizeof(hz_map));
-    new_map->size = map->size;
+    new_map->key_size = map->key_size;
+    new_map->value_size = map->value_size;
     new_map->hash_func = map->hash_func;
     new_map->cmp_func = map->cmp_func;
+    new_map->size = map->size;
     new_map->bucket_count = map->bucket_count;
     new_map->buckets = hz_malloc(map->bucket_count, sizeof(hz_map_entry *));
     for (size_t i = 0; i < map->bucket_count; ++i) {
         new_map->buckets[i] = hz_map_entry_copy(map, map->buckets[i]);
     }
+    new_map->mod_count = map->mod_count;
     return new_map;
 }
 

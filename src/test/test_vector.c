@@ -210,6 +210,21 @@ test_vector_data(void)
     hz_vector_free(vec);
 }
 
+static void
+test_vector_copy(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 2);
+    hz_vector_append_T(vec, 3);
+    hz_vector_append_T(vec, 4);
+    hz_vector *copy = hz_vector_copy(vec);
+    hz_vector_free(vec);
+    T expected[] = { 1, 2, 3, 4 };
+    hz_vector_assert_eq(copy, expected, 4);
+    hz_vector_free(copy);
+}
+
 void
 test_vector(void)
 {
@@ -220,5 +235,6 @@ test_vector(void)
     test_vector_large();
     test_vector_resize();
     test_vector_data();
+    test_vector_copy();
     printf("All vector tests passed!\n");
 }

@@ -181,11 +181,11 @@ test_map_insert(void)
     hz_map_assert_put_new(map, 3, "three");
     hz_map_assert_put_new(map, 4, "four");
     TEntry entries[] = {
-        {0, "zero"},
-        {1, "one"},
-        {2, "two"},
-        {3, "three"},
-        {4, "four"}
+        { 0, "zero" },
+        { 1, "one" },
+        { 2, "two" },
+        { 3, "three" },
+        { 4, "four" }
     };
     hz_map_assert_eq(map, entries, 5);
     hz_map_assert_put_replace(map, 2, "new two", "two");
@@ -273,12 +273,13 @@ test_map_bad_hash(void)
         { 4, "four" }
     };
     hz_map_assert_eq(map, entries, 4);
+    hz_map_free(map);
 }
 
 static void
 test_map_iterator(void)
 {
-    hz_map *map = hz_map_new_T(key_hash_bad_T);
+    hz_map *map = hz_map_new_T(key_hash_T);
     hz_map_assert_put_new(map, 0, "zero");
     hz_map_assert_put_new(map, 1, "one");
     hz_map_assert_put_new(map, 2, "two");
@@ -292,6 +293,27 @@ test_map_iterator(void)
         { 3, "three" }
     };
     hz_map_assert_it_eq(map, entries, 3);
+    hz_map_free(map);
+}
+
+static void
+test_map_copy(void)
+{
+    hz_map *map = hz_map_new_T(key_hash_T);
+    hz_map_assert_put_new(map, 0, "zero");
+    hz_map_assert_put_new(map, 1, "one");
+    hz_map_assert_put_new(map, 2, "two");
+    hz_map_assert_put_new(map, 3, "three");
+    hz_map_assert_remove(map, 0, "zero");
+    hz_map *copy = hz_map_copy(map);
+    hz_map_free(map);
+    TEntry entries[] = {
+        { 1, "one" },
+        { 2, "two" },
+        { 3, "three" }
+    };
+    hz_map_assert_eq(copy, entries, 3);
+    hz_map_free(copy);
 }
 
 void
@@ -303,5 +325,6 @@ test_map(void)
     test_map_large();
     test_map_bad_hash();
     test_map_iterator();
+    test_map_copy();
     printf("All map tests passed!\n");
 }

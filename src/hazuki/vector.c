@@ -71,9 +71,9 @@ hz_vector *
 hz_vector_new(size_t element_size)
 {
     hz_vector *vec = hz_malloc(1, sizeof(hz_vector));
+    vec->element_size = element_size;
     vec->size = 0;
     vec->capacity = 0;
-    vec->element_size = element_size;
     vec->buffer = NULL;
     return vec;
 }
@@ -83,9 +83,9 @@ hz_vector_copy(const hz_vector *vec)
 {
     hz_vector_check_null(vec);
     hz_vector *new_vec = hz_malloc(1, sizeof(hz_vector));
+    new_vec->element_size = vec->element_size;
     new_vec->size = vec->size;
     new_vec->capacity = vec->capacity;
-    new_vec->element_size = vec->element_size;
     new_vec->buffer = hz_malloc(new_vec->capacity, new_vec->element_size);
     hz_memcpy(new_vec->buffer, vec->buffer, vec->size, vec->element_size);
     return new_vec;
