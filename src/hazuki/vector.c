@@ -223,12 +223,8 @@ hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index)
 }
 
 void *
-hz_vector_data(hz_vector *vec)
+hz_vector_data(const hz_vector *vec)
 {
     hz_vector_check_null(vec);
-    if (vec->size == 0) {
-        return NULL;
-    } else {
-        return vec->buffer;
-    }
+    return vec->buffer;
 }

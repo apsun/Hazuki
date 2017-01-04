@@ -113,8 +113,7 @@ bool
 hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index);
 
 /**
- * Gets the internal array buffer that holds the items in the vector. If
- * the vector has a size of zero, NULL will be returned. Accessing
+ * Gets the internal array buffer that holds the items in the vector. Accessing
  * elements at an index >= size of the vector results in undefined behavior.
  * Any changes in the buffer will be reflected in the vector. If you modify
  * the vector (by calling any non-const vector function), the buffer is
@@ -122,6 +121,6 @@ hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index);
  * the buffer.
  */
 void *
-hz_vector_data(hz_vector *vec);
+hz_vector_data(const hz_vector *vec);
 
 #endif
