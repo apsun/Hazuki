@@ -39,6 +39,7 @@ typedef struct hz_map hz_map;
  * while (hz_map_iterator_next(it, &key, &value)) {
  *     ...
  * }
+ * hz_map_iterator_free(it);
  */
 typedef struct hz_map_iterator hz_map_iterator;
 

@@ -12,21 +12,21 @@ hz_abort(const char *msg, ...);
 /**
  * Calls hz_abort() if the condition evaluates to false.
  */
-#define hz_assert(cond)                 \
-do {                                    \
-    if (!(cond)) {                      \
-        hz_abort("%s is false", #cond); \
-    }                                   \
+#define hz_assert(cond)                               \
+do {                                                  \
+    if (!(cond)) {                                    \
+        hz_abort("%s: %s is false", __func__, #cond); \
+    }                                                 \
 } while (0)
 
 /**
  * Calls hz_abort() if the argument is NULL.
  */
 #define hz_check_null(value)\
-do {                                    \
-    if ((value) == NULL) {              \
-        hz_abort("%s == NULL", #value); \
-    }                                   \
+do {                                                  \
+    if ((value) == NULL) {                            \
+        hz_abort("%s: %s == NULL", __func__, #value); \
+    }                                                 \
 } while (0)
 
 /**
