@@ -58,7 +58,7 @@ hz_vector_new(size_t element_size);
 
 /**
  * Creates a new vector by copying an existing one. You must free the returned
- * vector using hz_vector_free(hz_vector *).
+ * vector using hz_vector_free().
  */
 hz_vector *
 hz_vector_copy(const hz_vector *vec);

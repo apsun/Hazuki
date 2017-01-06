@@ -10,7 +10,7 @@ void
 hz_abort(const char *msg, ...);
 
 /**
- * Calls hz_abort() if the condition evaluates to false.
+ * Aborts the program if the condition evaluates to false.
  */
 #define hz_assert(cond)                               \
 do {                                                  \
@@ -20,9 +20,9 @@ do {                                                  \
 } while (0)
 
 /**
- * Calls hz_abort() if the argument is NULL.
+ * Aborts the program if the argument is NULL.
  */
-#define hz_check_null(value)\
+#define hz_check_null(value)                          \
 do {                                                  \
     if ((value) == NULL) {                            \
         hz_abort("%s: %s == NULL", __func__, #value); \
@@ -62,9 +62,7 @@ hz_realloc(void *ptr, size_t num, size_t size);
 
 /**
  * Frees a block of memory allocated by hz_malloc, hz_calloc, or
- * hz_realloc. This is only provided for symmetry; it is equivalent
- * to calling free(void *) on the pointer directly. Calling hz_free
- * on a NULL pointer is a no-op.
+ * hz_realloc. Calling hz_free on a NULL pointer is a no-op.
  */
 void
 hz_free(void *ptr);
@@ -110,7 +108,7 @@ hz_memcmp(const void *a, const void *b, size_t num, size_t size);
  * copied string using (return value) - (dest), which can be useful when
  * concatenating strings:
  *
- * char buf[100];
+ * char buf[N];
  * char *dest = buf;
  * while (...) {
  *     dest = hz_strncpy(dest, src, sizeof(buf) - (dest - buf));
