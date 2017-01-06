@@ -319,6 +319,7 @@ test_vector_reverse(void)
     hz_vector_reverse(vec);
     T expected[] = { 4, 3, 2, 1 };
     hz_vector_assert_eq(vec, expected, 4);
+    hz_vector_free(vec);
 }
 
 static void
@@ -335,6 +336,7 @@ test_vector_sort(void)
     hz_vector_sort(vec, cmp_T);
     T expected[] = { INT_MIN, -5, -2, 0, 1, 100, INT_MAX };
     hz_vector_assert_eq(vec, expected, 7);
+    hz_vector_free(vec);
 }
 
 void
