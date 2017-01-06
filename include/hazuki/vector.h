@@ -50,6 +50,13 @@
 typedef struct hz_vector hz_vector;
 
 /**
+ * Comparator function for hz_vector_sort(). If a < b, returns a
+ * negative number. If a > b, returns a positive number. If a == b,
+ * returns zero.
+ */
+typedef int (*hz_vector_cmp_func)(const void *a, const void *b);
+
+/**
  * Creates a new empty vector with the specified element size. You must free
  * the returned vector using hz_vector_free().
  */
@@ -148,6 +155,19 @@ hz_vector_insert(hz_vector *vec, size_t index, const void *value);
  */
 void
 hz_vector_remove(hz_vector *vec, size_t index);
+
+/**
+ * Reverses the order of the elements in the vector.
+ */
+void
+hz_vector_reverse(hz_vector *vec);
+
+/**
+ * Sorts the elements in the vector using the given comparator function.
+ * This is *not* necessarily a stable sort.
+ */
+void
+hz_vector_sort(hz_vector *vec, hz_vector_cmp_func cmp_func);
 
 /**
  * Gets the index of the first occurence of an element in the vector. Returns

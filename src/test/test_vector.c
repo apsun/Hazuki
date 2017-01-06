@@ -5,6 +5,20 @@
 
 typedef int T;
 
+static int
+cmp_T(const void *a, const void *b)
+{
+    T at = *(T *)a;
+    T bt = *(T *)b;
+    if (at < bt) {
+        return -1;
+    } else if (at > bt) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
 static hz_vector *
 hz_vector_new_T(void)
 {
@@ -294,6 +308,35 @@ test_vector_equals(void)
     hz_vector_assert_equals_true(NULL, NULL);
 }
 
+static void
+test_vector_reverse(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 2);
+    hz_vector_append_T(vec, 3);
+    hz_vector_append_T(vec, 4);
+    hz_vector_reverse(vec);
+    T expected[] = { 4, 3, 2, 1 };
+    hz_vector_assert_eq(vec, expected, 4);
+}
+
+static void
+test_vector_sort(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_append_T(vec, 0);
+    hz_vector_append_T(vec, -2);
+    hz_vector_append_T(vec, 100);
+    hz_vector_append_T(vec, INT_MIN);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, -5);
+    hz_vector_append_T(vec, INT_MAX);
+    hz_vector_sort(vec, cmp_T);
+    T expected[] = { INT_MIN, -5, -2, 0, 1, 100, INT_MAX };
+    hz_vector_assert_eq(vec, expected, 7);
+}
+
 void
 test_vector(void)
 {
@@ -309,5 +352,7 @@ test_vector(void)
     test_vector_reserve();
     test_vector_import();
     test_vector_equals();
+    test_vector_reverse();
+    test_vector_sort();
     printf("All vector tests passed!\n");
 }

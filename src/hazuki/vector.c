@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define INITIAL_CAPACITY 8
 #define SCALING_FACTOR 1.5
@@ -194,6 +195,31 @@ hz_vector_remove(hz_vector *vec, size_t index)
     void *next_offset = hz_vector_offset_of(vec, index + 1);
     hz_memmove(offset, next_offset, num, vec->element_size);
     vec->size--;
+}
+
+void
+hz_vector_reverse(hz_vector *vec)
+{
+    hz_check_null(vec);
+    void *tmp = hz_malloc(1, vec->element_size);
+    for (size_t i = 0; i < vec->size / 2; ++i) {
+        void *left = hz_vector_offset_of(vec, i);
+        void *right = hz_vector_offset_of(vec, vec->size - i - 1);
+        hz_memcpy(tmp, left, 1, vec->element_size);
+        hz_memcpy(left, right, 1, vec->element_size);
+        hz_memcpy(right, tmp, 1, vec->element_size);
+    }
+    hz_free(tmp);
+}
+
+void
+hz_vector_sort(hz_vector *vec, hz_vector_cmp_func cmp_func)
+{
+    hz_check_null(vec);
+    hz_check_null(cmp_func);
+    if (vec->size != 0) {
+        qsort(vec->buffer, vec->size, vec->element_size, cmp_func);
+    }
 }
 
 bool

@@ -52,8 +52,7 @@ typedef size_t (*hz_map_hash_func)(const void *key);
 
 /**
  * Comparator function for hz_map. Returns zero if the inputs are
- * equal, and non-zero otherwise. This function must always return
- * the same value for any particular pair of inputs.
+ * equal, and non-zero otherwise.
  */
 typedef int (*hz_map_cmp_func)(const void *a, const void *b);
 
@@ -126,7 +125,7 @@ hz_map_iterator *
 hz_map_iterator_new(const hz_map *map);
 
 /**
- * Frees an iterator allocated by hz_map_iterator_new(hz_map *).
+ * Frees an iterator allocated by hz_map_iterator_new().
  * Using the iterator after deletion results in undefined behavior.
  */
 void
