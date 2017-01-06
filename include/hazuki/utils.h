@@ -10,6 +10,26 @@ void
 hz_abort(const char *msg, ...);
 
 /**
+ * Calls hz_abort() if the condition evaluates to false.
+ */
+#define hz_assert(cond)                 \
+do {                                    \
+    if (!(cond)) {                      \
+        hz_abort("%s is false", #cond); \
+    }                                   \
+} while (0)
+
+/**
+ * Calls hz_abort() if the argument is NULL.
+ */
+#define hz_check_null(value)\
+do {                                    \
+    if ((value) == NULL) {              \
+        hz_abort("%s == NULL", #value); \
+    }                                   \
+} while (0)
+
+/**
  * Allocates a block of memory, with overflow and failure checking.
  * If num == 0, NULL is returned. The unit size must not be 0.
  * If num != 0, hz_malloc(num, sizeof(T)) is equivalent to

@@ -107,6 +107,14 @@ hz_vector_assert_eq(const hz_vector *vec, const T *arr, size_t size)
 }
 
 static void
+hz_vector_assert_equals_true(const hz_vector *a, const hz_vector *b)
+{
+    if (!hz_vector_equals(a, b)) {
+        hz_abort("Vectors should be equal");
+    }
+}
+
+static void
 test_vector_append(void)
 {
     hz_vector *vec = hz_vector_new_T();
@@ -252,6 +260,40 @@ test_vector_reserve(void)
     hz_vector_free(vec);
 }
 
+static void
+test_vector_import(void)
+{
+    T src[5] = { 1, 2, 3, 4, 5 };
+    hz_vector *vec = hz_vector_new_T();
+    hz_vector_resize(vec, 5, NULL);
+    T *buf1 = hz_vector_data(vec);
+    hz_memcpy(buf1, src, 5, sizeof(T));
+    hz_vector_assert_eq(vec, src, 5);
+    hz_vector_free(vec);
+}
+
+static void
+test_vector_equals(void)
+{
+    hz_vector *vec1 = hz_vector_new_T();
+    hz_vector_append_T(vec1, 1);
+    hz_vector_append_T(vec1, 2);
+    hz_vector_append_T(vec1, 3);
+    hz_vector_append_T(vec1, 4);
+
+    hz_vector *vec2 = hz_vector_new_T();
+    hz_vector_insert_T(vec2, 0, 4);
+    hz_vector_insert_T(vec2, 0, 3);
+    hz_vector_insert_T(vec2, 0, 2);
+    hz_vector_insert_T(vec2, 0, 1);
+
+    hz_vector_assert_equals_true(vec1, vec2);
+    hz_vector_free(vec1);
+    hz_vector_free(vec2);
+
+    hz_vector_assert_equals_true(NULL, NULL);
+}
+
 void
 test_vector(void)
 {
@@ -265,5 +307,7 @@ test_vector(void)
     test_vector_data();
     test_vector_copy();
     test_vector_reserve();
+    test_vector_import();
+    test_vector_equals();
     printf("All vector tests passed!\n");
 }

@@ -4,7 +4,42 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/**
+ * A hashmap that maps each each key to a value.
+ *
+ * To create a map, call hz_map_new() with the size of the key and value, and
+ * the key hash and comparator functions. To free the map, call hz_map_free():
+ *
+ * size_t key_hash(const void *key) { ... }
+ * int key_cmp(const void *a, const void *b) { ... }
+ * hz_map *map = hz_map_new(sizeof(TKey), sizeof(TValue), key_hash, key_cmp)
+ * ...
+ * hz_map_free(map);
+ *
+ * To access items in the map, use hz_map_get(), hz_map_put(), and
+ * hz_map_remove():
+ *
+ * TKey key = ...
+ * TValue new_value = ...
+ * TValue old_value;
+ * hz_map_get(map, &key, &old_value);
+ * hz_map_put(map, &key, &new_value, &old_value);
+ * hz_map_remove(map, &key, &old_value);
+ */
 typedef struct hz_map hz_map;
+
+/**
+ * Iterator for hz_map. Create using hz_map_iterator_new(),
+ * destroy with hz_map_iterator_free(). To iterate over all
+ * entries in the map, call hz_map_iterator_next() in a loop:
+ *
+ * hz_map *map = ...
+ * hz_map_iterator *it = hz_map_iterator_new(map);
+ * int key, value;
+ * while (hz_map_iterator_next(it, &key, &value)) {
+ *     ...
+ * }
+ */
 typedef struct hz_map_iterator hz_map_iterator;
 
 /**
@@ -38,8 +73,7 @@ hz_map *
 hz_map_copy(const hz_map *map);
 
 /**
- * Frees a hashmap created by hz_map_new() or hz_map_copy(). This does
- * *NOT* free the elements contained in the hashmap. Using the hashmap
+ * Frees a hashmap created by hz_map_new() or hz_map_copy(). Using the hashmap
  * after deletion results in undefined behavior.
  */
 void
@@ -52,8 +86,7 @@ size_t
 hz_map_size(const hz_map *map);
 
 /**
- * Removes all elements from the hashmap. This does *NOT* free the
- * elements contained in the hashmap.
+ * Removes all elements from the hashmap.
  */
 void
 hz_map_clear(hz_map *map);

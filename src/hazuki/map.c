@@ -3,7 +3,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #define INITIAL_CAPACITY 8
 #define SCALING_FACTOR 2
@@ -35,38 +34,6 @@ struct hz_map_iterator
     hz_map_entry *current_entry;
     unsigned int mod_count;
 };
-
-static void
-hz_map_check_null(const hz_map *map)
-{
-    if (map == NULL) {
-        hz_abort("Map is null");
-    }
-}
-
-static void
-hz_map_check_key(const void *key)
-{
-    if (key == NULL) {
-        hz_abort("Key is null");
-    }
-}
-
-static void
-hz_map_check_value(const void *value)
-{
-    if (value == NULL) {
-        hz_abort("Value is null");
-    }
-}
-
-static void
-hz_map_iterator_check_null(const hz_map_iterator *it)
-{
-    if (it == NULL) {
-        hz_abort("Map iterator is null");
-    }
-}
 
 static void
 hz_map_touch(hz_map *map)
@@ -292,11 +259,8 @@ hz_map *
 hz_map_new(size_t key_size, size_t value_size,
            hz_map_hash_func hash_func, hz_map_cmp_func cmp_func)
 {
-    if (hash_func == NULL) {
-        hz_abort("Key hash function is null");
-    } else if (cmp_func == NULL) {
-        hz_abort("Key comparator function is null");
-    }
+    hz_check_null(hash_func);
+    hz_check_null(cmp_func);
     hz_map *map = hz_malloc(1, sizeof(hz_map));
     map->key_size = key_size;
     map->value_size = value_size;
@@ -312,7 +276,7 @@ hz_map_new(size_t key_size, size_t value_size,
 hz_map *
 hz_map_copy(const hz_map *map)
 {
-    hz_map_check_null(map);
+    hz_check_null(map);
     hz_map *new_map = hz_malloc(1, sizeof(hz_map));
     new_map->key_size = map->key_size;
     new_map->value_size = map->value_size;
@@ -331,22 +295,23 @@ hz_map_copy(const hz_map *map)
 void
 hz_map_free(hz_map *map)
 {
-    hz_map_check_null(map);
-    hz_map_free_buckets(map);
-    hz_free(map);
+    if (map != NULL) {
+        hz_map_free_buckets(map);
+        hz_free(map);
+    }
 }
 
 size_t
 hz_map_size(const hz_map *map)
 {
-    hz_map_check_null(map);
+    hz_check_null(map);
     return map->size;
 }
 
 void
 hz_map_clear(hz_map *map)
 {
-    hz_map_check_null(map);
+    hz_check_null(map);
     hz_map_touch(map);
     hz_map_free_buckets(map);
     map->size = 0;
@@ -357,8 +322,8 @@ hz_map_clear(hz_map *map)
 bool
 hz_map_get(const hz_map *map, const void *key, void *out_value)
 {
-    hz_map_check_null(map);
-    hz_map_check_key(key);
+    hz_check_null(map);
+    hz_check_null(key);
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
     if (entry != NULL) {
@@ -374,9 +339,9 @@ hz_map_get(const hz_map *map, const void *key, void *out_value)
 bool
 hz_map_put(hz_map *map, const void *key, const void *value, void *out_value)
 {
-    hz_map_check_null(map);
-    hz_map_check_key(key);
-    hz_map_check_value(value);
+    hz_check_null(map);
+    hz_check_null(key);
+    hz_check_null(value);
     hz_map_touch(map);
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
@@ -395,8 +360,8 @@ hz_map_put(hz_map *map, const void *key, const void *value, void *out_value)
 bool
 hz_map_remove(hz_map *map, const void *key, void *out_value)
 {
-    hz_map_check_null(map);
-    hz_map_check_key(key);
+    hz_check_null(map);
+    hz_check_null(key);
     if (map->size == 0) {
         return false;
     }
@@ -423,7 +388,7 @@ hz_map_remove(hz_map *map, const void *key, void *out_value)
 hz_map_iterator *
 hz_map_iterator_new(const hz_map *map)
 {
-    hz_map_check_null(map);
+    hz_check_null(map);
     hz_map_iterator *it = hz_malloc(1, sizeof(hz_map_iterator));
     it->map = map;
     it->mod_count = map->mod_count;
@@ -435,14 +400,13 @@ hz_map_iterator_new(const hz_map *map)
 void
 hz_map_iterator_free(hz_map_iterator *it)
 {
-    hz_map_iterator_check_null(it);
     hz_free(it);
 }
 
 bool
 hz_map_iterator_next(hz_map_iterator *it, void *key, void *value)
 {
-    hz_map_iterator_check_null(it);
+    hz_check_null(it);
     if (it->mod_count != it->map->mod_count) {
         hz_abort("Map contents modified during iteration");
     }

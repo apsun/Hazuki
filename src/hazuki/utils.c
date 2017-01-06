@@ -36,16 +36,6 @@ hz_check_alloc(const void *ptr)
     }
 }
 
-static void
-hz_check_copy(const void *dest, const void *src)
-{
-    if (dest == NULL) {
-        hz_abort("Copy destination is null");
-    } else if (src == NULL) {
-        hz_abort("Copy source is null");
-    }
-}
-
 void *
 hz_malloc(size_t num, size_t size)
 {
@@ -96,7 +86,8 @@ hz_memcpy(void *dest, const void *src, size_t num, size_t size)
     if (num == 0) {
         return;
     }
-    hz_check_copy(dest, src);
+    hz_check_null(dest);
+    hz_check_null(src);
     memcpy(dest, src, num * size);
 }
 
@@ -107,7 +98,8 @@ hz_memmove(void *dest, const void *src, size_t num, size_t size)
     if (num == 0) {
         return;
     }
-    hz_check_copy(dest, src);
+    hz_check_null(dest);
+    hz_check_null(src);
     memmove(dest, src, num * size);
 }
 
@@ -118,16 +110,16 @@ hz_memcmp(const void *a, const void *b, size_t num, size_t size)
     if (num == 0) {
         return 0;
     }
-    if (a == NULL || b == NULL) {
-        hz_abort("Comparing null region");
-    }
+    hz_check_null(a);
+    hz_check_null(b);
     return memcmp(a, b, num * size);
 }
 
 char *
 hz_strncpy(char *dest, const char *src, size_t count)
 {
-    hz_check_copy(dest, src);
+    hz_check_null(dest);
+    hz_check_null(src);
     while (count-- > 0) {
         if ((*dest = *src) == '\0') {
             return dest;

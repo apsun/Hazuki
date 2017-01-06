@@ -4,6 +4,49 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/**
+ * A self-growing array of items.
+ *
+ * To create a vector, call hz_vector_new() with the size of the element.
+ * To free the vector, call hz_vector_free():
+ *
+ * hz_vector *vec = hz_vector_new(sizeof(T));
+ * ...
+ * hz_vector_free(vec);
+ *
+ * To access items in the vector, use hz_vector_get(), hz_vector_set(),
+ * hz_vector_append(), hz_vector_insert(), and hz_vector_remove():
+ *
+ * T value = ...
+ * T out_value;
+ * hz_vector_append(vec, &value);
+ * hz_vector_insert(vec, 0, &value);
+ * hz_vector_remove(vec, 0);
+ * hz_vector_set(vec, 0, &value);
+ * hz_vector_get(vec, 0, &out_value);
+ *
+ * To iterate the vector, use hz_vector_get() in a for loop:
+ *
+ * T value;
+ * size_t size = hz_vector_size(vec);
+ * for (size_t i = 0; i < size; ++i) {
+ *     hz_vector_get(vec, i, &value);
+ *     ...
+ * }
+ *
+ * You can import/export data from/to an array using hz_vector_resize()
+ * and hz_vector_data():
+ *
+ * hz_vector *vec = hz_vector_new(sizeof(T));
+ * hz_vector_resize(vec, N, NULL);
+ * T *buf = hz_vector_data(vec);
+ *
+ * T src[N] = { ... };
+ * hz_memcpy(buf, src, N, sizeof(T));
+ *
+ * T dest[N];
+ * hz_memcpy(dest, buf, N, sizeof(T));
+ */
 typedef struct hz_vector hz_vector;
 
 /**
@@ -42,7 +85,10 @@ hz_vector_capacity(const hz_vector *vec);
 /**
  * Resizes the vector to the specified size, filling in any new elements with
  * the specified value. If the new size is smaller than the current size, the
- * vector will be truncated.
+ * vector will be truncated. If fill is NULL, any new elements have undefined
+ * value until written to for the first time. This behavior should only be used
+ * in conjunction with hz_vector_data() to initialize the elements directly via
+ * the buffer.
  */
 void
 hz_vector_resize(hz_vector *vec, size_t size, const void *fill);
@@ -111,6 +157,15 @@ hz_vector_remove(hz_vector *vec, size_t index);
  */
 bool
 hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index);
+
+/**
+ * Compares the two vectors. Returns true if all elements are equal, and false
+ * otherwise. If either vector is NULL, the return value is true if and only if
+ * the other vector is also NULL. If the vectors have different element types,
+ * the behavior is undefined.
+ */
+bool
+hz_vector_equals(const hz_vector *a, const hz_vector *b);
 
 /**
  * Gets the internal array buffer that holds the items in the vector. Accessing
