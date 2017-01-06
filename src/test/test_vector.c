@@ -2,6 +2,7 @@
 #include "hazuki/utils.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 
 typedef int T;
 
