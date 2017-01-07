@@ -3,8 +3,9 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-typedef int TKey;
+typedef short TKey;
 typedef char *TValue;
 typedef struct
 {
@@ -29,6 +30,17 @@ static int
 key_cmp_T(const void *a, const void *b)
 {
     return *(TKey *)a != *(TKey *)b;
+}
+
+static int
+value_cmp_T(const void *a, const void *b)
+{
+    const char *as = *(const char **)a;
+    const char *bs = *(const char **)b;
+    if (as == NULL || bs == NULL) {
+        return as != bs;
+    }
+    return strcmp(as, bs);
 }
 
 hz_map *
@@ -68,7 +80,7 @@ hz_map_assert_get(const hz_map *map, TKey key, TValue expected_value)
     if (!hz_map_get_T(map, key, &value)) {
         hz_abort("Map does not contain key");
     }
-    if (value != expected_value) {
+    if (value_cmp_T(&value, &expected_value) != 0) {
         hz_abort("Map contains key, but value is incorrect");
     }
 }
@@ -88,7 +100,7 @@ hz_map_assert_put_replace(hz_map *map, TKey key, TValue value, TValue expeced_ol
     if (!hz_map_put_T(map, key, value, &old_value)) {
         hz_abort("Should have replaced key");
     }
-    if (old_value != expeced_old_value) {
+    if (value_cmp_T(&old_value, &expeced_old_value) != 0) {
         hz_abort("Old value mismatch");
     }
 }
@@ -100,7 +112,7 @@ hz_map_assert_remove(hz_map *map, TKey key, TValue expected_value)
     if (!hz_map_remove_T(map, key, &value)) {
         hz_abort("Map does not contain key");
     }
-    if (value != expected_value) {
+    if (value_cmp_T(&value, &expected_value) != 0) {
         hz_abort("Old value mismatch");
     }
 }
@@ -168,6 +180,22 @@ hz_map_assert_it_eq(const hz_map *map, TEntry *entries, size_t count)
     hz_map_iterator_free(it);
     if (n != count) {
         hz_abort("Missing entries in iterator");
+    }
+}
+
+static void
+hz_map_assert_equals_true(const hz_map *a, const hz_map *b, hz_map_cmp_func cmp_func)
+{
+    if (!hz_map_equals(a, b, cmp_func)) {
+        hz_abort("Maps should be equal");
+    }
+}
+
+static void
+hz_map_assert_equals_false(const hz_map *a, const hz_map *b, hz_map_cmp_func cmp_func)
+{
+    if (hz_map_equals(a, b, cmp_func)) {
+        hz_abort("Maps should not be equal");
     }
 }
 
@@ -246,11 +274,11 @@ test_map_large(void)
         "four",
     };
     hz_map *map = hz_map_new_T(key_hash_T);
-    for (int i = 0; i < 10000; ++i) {
+    for (TKey i = 0; i < 10000; ++i) {
         hz_map_assert_put_new(map, i, values[i % 5]);
     }
     hz_map_assert_size(map, 10000);
-    for (int i = 0; i < 10000; ++i) {
+    for (TKey i = 0; i < 10000; ++i) {
         hz_map_assert_get(map, i, values[i % 5]);
     }
     hz_map_free(map);
@@ -318,6 +346,34 @@ test_map_copy(void)
     hz_map_free(copy);
 }
 
+static void
+test_map_equals(void)
+{
+    hz_map *map1 = hz_map_new_T(key_hash_T);
+    hz_map_assert_put_new(map1, 0, "zero");
+    hz_map_assert_put_new(map1, 1, "one");
+    hz_map_assert_put_new(map1, 2, "two");
+    hz_map_assert_put_new(map1, 3, "three");
+    hz_map *map2 = hz_map_new_T(key_hash_bad_T);
+    for (TKey i = 0; i < 100; ++i) {
+        hz_map_assert_put_new(map2, i, "dummy");
+    }
+    for (TKey i = 0; i < 100; ++i) {
+        hz_map_assert_remove(map2, i, "dummy");
+    }
+    hz_map_assert_put_new(map2, 3, "three");
+    hz_map_assert_put_new(map2, 0, "zero");
+    hz_map_assert_put_new(map2, 2, "two");
+    hz_map_assert_put_new(map2, 1, "one");
+    hz_map_assert_equals_true(map1, map2, value_cmp_T);
+    hz_map_assert_equals_true(map1, map2, NULL);
+    hz_map_assert_put_replace(map2, 1, NULL, "one");
+    hz_map_assert_equals_false(map1, map2, value_cmp_T);
+    hz_map_assert_equals_false(map1, map2, NULL);
+    hz_map_free(map1);
+    hz_map_free(map2);
+}
+
 void
 test_map(void)
 {
@@ -328,5 +384,6 @@ test_map(void)
     test_map_bad_hash();
     test_map_iterator();
     test_map_copy();
+    test_map_equals();
     printf("All map tests passed!\n");
 }

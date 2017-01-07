@@ -4,8 +4,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/**
+ * Initial capacity for the hashmap. Must be > 0.
+ */
 #define INITIAL_CAPACITY 8
+
+/**
+ * Factor by which to scale the hashmap's bucket array when the load
+ * factor is reached. Must be > 1.
+ */
 #define SCALING_FACTOR 2
+
+/**
+ * When the number of entries divided by the number of buckets reaches
+ * this value, the hashmap is resized. Must be > 0.
+ */
 #define LOAD_FACTOR 0.75
 
 typedef struct hz_map_entry
@@ -44,18 +57,25 @@ hz_map_touch(hz_map *map)
 static size_t
 hz_map_hash_key(const hz_map *map, const void *key)
 {
+    // Key hash function. If desired, a secondary key hashing round
+    // can be applied here to reduce the risk of collisions.
     return map->hash_func(key);
 }
 
 static size_t
 hz_map_get_bucket_index(size_t hash, size_t bucket_count)
 {
+    // We compute the index as the hash modulo the number of buckets.
+    // If the bucket count is always a power of 2, we can use
+    // hash & (bucket_count - 1) instead which is a bit faster.
     return hash % bucket_count;
 }
 
 static hz_map_entry *
 hz_map_entry_alloc(const hz_map *map)
 {
+    // sizeof(hz_map_entry) gives the size without the flexible array,
+    // so we need to add the size of the key and value.
     size_t size = sizeof(hz_map_entry) + map->key_size + map->value_size;
     hz_map_entry *entry = hz_malloc(1, size);
     return entry;
@@ -64,6 +84,9 @@ hz_map_entry_alloc(const hz_map *map)
 static void *
 hz_map_entry_key_offset(const hz_map *map, const hz_map_entry *entry)
 {
+    // Technically we don't need the map argument since the key
+    // is at buffer[0], but we take it anyways for consistency
+    // with the value offset function.
     (void)map;
     return (void *)(entry->buffer);
 }
@@ -110,13 +133,20 @@ static bool
 hz_map_entry_matches(const hz_map *map, const hz_map_entry *entry,
                      size_t hash, const void *key)
 {
+    // If the hashes don't match, we don't need to compare the keys.
     if (entry->hash != hash) {
         return false;
     }
-    if (map->cmp_func(hz_map_entry_key_offset(map, entry), key) != 0) {
-        return false;
+
+    // If the hashes match, we still need to check that the keys are equal.
+    void *entry_key = hz_map_entry_key_offset(map, entry);
+    int cmp;
+    if (map->cmp_func == NULL) {
+        cmp = hz_memcmp(key, entry_key, 1, map->key_size);
+    } else {
+        cmp = map->cmp_func(key, entry_key);
     }
-    return true;
+    return cmp == 0;
 }
 
 static hz_map_entry *
@@ -151,6 +181,9 @@ hz_map_entry_new(const hz_map *map, size_t hash,
 static hz_map_entry *
 hz_map_entry_copy(const hz_map *map, const hz_map_entry *entry)
 {
+    // "Pop" each value from the old list, clone it, and "push"
+    // it at the head of the new list. This has the side effect
+    // of reversing the entry order.
     hz_map_entry *prev = NULL;
     while (entry != NULL) {
         hz_map_entry *curr = hz_map_entry_alloc(map);
@@ -188,12 +221,16 @@ static void
 hz_map_resize(hz_map *map)
 {
     size_t old_size = map->bucket_count;
+
+    // Allocate and initialize new bucket array
     size_t new_size = hz_map_next_bucket_count(old_size);
-    hz_map_entry **old_buckets = map->buckets;
     hz_map_entry **new_buckets = hz_malloc(new_size, sizeof(hz_map_entry *));
     for (size_t i = 0; i < new_size; ++i) {
         new_buckets[i] = NULL;
     }
+
+    // Move entries to the new array
+    hz_map_entry **old_buckets = map->buckets;
     for (size_t i = 0; i < old_size; ++i) {
         hz_map_entry *e = old_buckets[i];
         while (e != NULL) {
@@ -206,6 +243,8 @@ hz_map_resize(hz_map *map)
     }
     map->bucket_count = new_size;
     map->buckets = new_buckets;
+
+    // Free old bucket array
     hz_free(old_buckets);
 }
 
@@ -213,12 +252,19 @@ static bool
 hz_map_should_resize(const hz_map *map, size_t index)
 {
     if (map->bucket_count == 0) {
+        // Always need to resize an empty map
         return true;
     } else if (map->buckets[index] == NULL) {
+        // If we don't have a collision, don't resize even
+        // if we are over the load factor
         return false;
     } else if (map->bucket_count == SIZE_MAX) {
+        // Can't resize a full map (though this case will
+        // probably never be hit since we would reach the
+        // maximum memory far before this)
         return false;
     } else {
+        // Otherwise, resize if we are over the load factor
         return map->size >= (size_t)(map->bucket_count * LOAD_FACTOR);
     }
 }
@@ -226,14 +272,22 @@ hz_map_should_resize(const hz_map *map, size_t index)
 static void
 hz_map_add_entry(hz_map *map, size_t hash, const void *key, const void *value)
 {
+    // First find which bucket this entry belongs to,
+    // since we only resize the map if we've reached the
+    // load factor AND we get a collision.
     size_t index = 0;
     if (map->bucket_count != 0) {
         index = hz_map_get_bucket_index(hash, map->bucket_count);
     }
+
+    // Resize the map if necessary. If a resize is performed,
+    // we need to recalculate the bucket index.
     if (hz_map_should_resize(map, index)) {
         hz_map_resize(map);
         index = hz_map_get_bucket_index(hash, map->bucket_count);
     }
+
+    // Allocate entry and push it at the head of the bucket
     hz_map_entry *new_entry = hz_map_entry_new(map, hash, key, value);
     hz_map_entry *old_head = map->buckets[index];
     new_entry->next = old_head;
@@ -346,12 +400,15 @@ hz_map_put(hz_map *map, const void *key, const void *value, void *out_value)
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
     if (entry != NULL) {
+        // If we already had a matching entry for the given key,
+        // just replace the entry's value
         if (out_value != NULL) {
             hz_map_entry_get_value(map, entry, out_value);
         }
         hz_map_entry_set_value(map, entry, value);
         return true;
     } else {
+        // No matching entry for the given key, insert a new one
         hz_map_add_entry(map, hash, key, value);
         return false;
     }
@@ -362,9 +419,13 @@ hz_map_remove(hz_map *map, const void *key, void *out_value)
 {
     hz_check_null(map);
     hz_check_null(key);
+
+    // No buckets to check, fail fast
     if (map->size == 0) {
         return false;
     }
+
+    // Scan corresponding bucket for the entry
     size_t hash = hz_map_hash_key(map, key);
     size_t index = hz_map_get_bucket_index(hash, map->bucket_count);
     hz_map_entry **entry = &map->buckets[index];
@@ -382,7 +443,62 @@ hz_map_remove(hz_map *map, const void *key, void *out_value)
         }
         entry = &curr->next;
     }
+
+    // Didn't find an entry for the given key
     return false;
+}
+
+bool
+hz_map_equals(const hz_map *a, const hz_map *b, hz_map_cmp_func cmp_func)
+{
+    if (a == b) {
+        return true;
+    }
+    if (a == NULL || b == NULL) {
+        return false;
+    }
+    if (a->key_size != b->key_size) {
+        hz_abort("Maps have different key types");
+    }
+    if (a->value_size != b->value_size) {
+        hz_abort("Maps have different value types");
+    }
+    if (a->size != b->size) {
+        return false;
+    }
+
+    // Since the maps have the same size, they are equal if and only if
+    // each key in A also exists in B and maps to the same value.
+    for (size_t i = 0; i < a->bucket_count; ++i) {
+        hz_map_entry *a_entry = a->buckets[i];
+        while (a_entry != NULL) {
+            void *key = hz_map_entry_key_offset(a, a_entry);
+
+            // Find corresponding entry in B
+            size_t b_hash = hz_map_hash_key(b, key);
+            hz_map_entry *b_entry = hz_map_find_entry(b, b_hash, key);
+            if (b_entry == NULL) {
+                return false;
+            }
+
+            // If a custom comparator function was provided, use
+            // that to determine value equality. Otherwise, use memcmp().
+            void *a_value = hz_map_entry_value_offset(a, a_entry);
+            void *b_value = hz_map_entry_value_offset(b, b_entry);
+            int cmp;
+            if (cmp_func == NULL) {
+                cmp = hz_memcmp(a_value, b_value, 1, a->value_size);
+            } else {
+                cmp = cmp_func(a_value, b_value);
+            }
+            if (cmp != 0) {
+                return false;
+            }
+
+            a_entry = a_entry->next;
+        }
+    }
+    return true;
 }
 
 hz_map_iterator *
@@ -407,21 +523,32 @@ bool
 hz_map_iterator_next(hz_map_iterator *it, void *key, void *value)
 {
     hz_check_null(it);
+
+    // Make sure we haven't modified the map between iterations,
+    // since the index and entry may no longer be valid
     if (it->mod_count != it->map->mod_count) {
         hz_abort("Map contents modified during iteration");
     }
+
+    // If we've iterated over everything in the current bucket,
+    // move to the next bucket
     while (it->current_entry == NULL) {
+        // If no more buckets, we've finished iterating the map
         if (it->bucket_index == it->map->bucket_count) {
             return false;
         }
         it->current_entry = it->map->buckets[it->bucket_index++];
     }
+
+    // Write key and value as necessary
     if (key != NULL) {
         hz_map_entry_get_key(it->map, it->current_entry, key);
     }
     if (value != NULL) {
         hz_map_entry_get_value(it->map, it->current_entry, value);
     }
+
+    // Move to the next entry in the current bucket
     it->current_entry = it->current_entry->next;
     return true;
 }

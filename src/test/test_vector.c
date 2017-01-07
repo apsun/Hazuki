@@ -59,9 +59,15 @@ hz_vector_resize_T(hz_vector *vec, size_t size, T fill)
 }
 
 static bool
-hz_vector_find_T(const hz_vector *vec, T value, size_t *out_index)
+hz_vector_search_T(const hz_vector *vec, T value, hz_vector_cmp_func cmp_func, size_t *out_index)
 {
-    return hz_vector_find(vec, &value, out_index);
+    return hz_vector_search(vec, &value, cmp_func, out_index);
+}
+
+static bool
+hz_vector_bsearch_T(const hz_vector *vec, T value, hz_vector_cmp_func cmp_func, size_t *out_index)
+{
+    return hz_vector_bsearch(vec, &value, cmp_func, out_index);
 }
 
 static void
@@ -83,10 +89,10 @@ hz_vector_assert_capacity(const hz_vector *vec, size_t capacity)
 }
 
 static void
-hz_vector_assert_find(const hz_vector *vec, T value, size_t expected_index)
+hz_vector_assert_search(const hz_vector *vec, T value, hz_vector_cmp_func cmp_func, size_t expected_index)
 {
     size_t vec_index;
-    if (!hz_vector_find_T(vec, value, &vec_index)) {
+    if (!hz_vector_search_T(vec, value, cmp_func, &vec_index)) {
         hz_abort("Vector element not found");
     }
     if (vec_index != expected_index) {
@@ -95,10 +101,31 @@ hz_vector_assert_find(const hz_vector *vec, T value, size_t expected_index)
 }
 
 static void
-hz_vector_assert_not_find(const hz_vector *vec, T value)
+hz_vector_assert_not_search(const hz_vector *vec, T value, hz_vector_cmp_func cmp_func)
 {
     size_t vec_index;
-    if (hz_vector_find_T(vec, value, &vec_index)) {
+    if (hz_vector_search_T(vec, value, cmp_func, &vec_index)) {
+        hz_abort("Vector element found at [%zu] but shouldn't exist", vec_index);
+    }
+}
+
+static void
+hz_vector_assert_bsearch(const hz_vector *vec, T value, hz_vector_cmp_func cmp_func, size_t expected_index)
+{
+    size_t vec_index;
+    if (!hz_vector_bsearch_T(vec, value, cmp_func, &vec_index)) {
+        hz_abort("Vector element not found");
+    }
+    if (vec_index != expected_index) {
+        hz_abort("Vector element found at [%zu] but expected at [%zu]", vec_index, expected_index);
+    }
+}
+
+static void
+hz_vector_assert_not_bsearch(const hz_vector *vec, T value, hz_vector_cmp_func cmp_func)
+{
+    size_t vec_index;
+    if (hz_vector_bsearch_T(vec, value, cmp_func, &vec_index)) {
         hz_abort("Vector element found at [%zu] but shouldn't exist", vec_index);
     }
 }
@@ -122,10 +149,18 @@ hz_vector_assert_eq(const hz_vector *vec, const T *arr, size_t size)
 }
 
 static void
-hz_vector_assert_equals_true(const hz_vector *a, const hz_vector *b)
+hz_vector_assert_equals_true(const hz_vector *a, const hz_vector *b, hz_vector_cmp_func cmp_func)
 {
-    if (!hz_vector_equals(a, b)) {
+    if (!hz_vector_equals(a, b, cmp_func)) {
         hz_abort("Vectors should be equal");
+    }
+}
+
+static void
+hz_vector_assert_equals_false(const hz_vector *a, const hz_vector *b, hz_vector_cmp_func cmp_func)
+{
+    if (hz_vector_equals(a, b, cmp_func)) {
+        hz_abort("Vectors should not be equal");
     }
 }
 
@@ -203,10 +238,11 @@ test_vector_find(void)
     hz_vector_append_T(vec, 4);
     hz_vector_append_T(vec, 5);
     hz_vector_append_T(vec, 6);
-    hz_vector_assert_find(vec, 0, 0);
-    hz_vector_assert_find(vec, 1, 1);
-    hz_vector_assert_find(vec, 4, 4);
-    hz_vector_assert_not_find(vec, 7);
+    hz_vector_assert_search(vec, 0, NULL, 0);
+    hz_vector_assert_search(vec, 1, cmp_T, 1);
+    hz_vector_assert_search(vec, 4, cmp_T, 4);
+    hz_vector_assert_not_search(vec, 7, NULL);
+    hz_vector_assert_not_search(vec, 7, cmp_T);
     hz_vector_free(vec);
 }
 
@@ -214,11 +250,11 @@ static void
 test_vector_large(void)
 {
     hz_vector *vec = hz_vector_new_T();
-    for (int i = 0; i < 10000; ++i) {
+    for (T i = 0; i < 10000; ++i) {
         hz_vector_insert_T(vec, 0, i);
     }
     hz_vector_assert_size(vec, 10000);
-    for (int i = 0; i < 10000; ++i) {
+    for (T i = 0; i < 10000; ++i) {
         hz_vector_assert_get(vec, i, 10000 - i - 1);
     }
     hz_vector_free(vec);
@@ -240,7 +276,7 @@ test_vector_data(void)
     hz_vector *vec = hz_vector_new_T();
     hz_vector_resize_T(vec, 8, 42);
     T *data = hz_vector_data(vec);
-    for (int i = 0; i < 4; ++i) {
+    for (T i = 0; i < 4; ++i) {
         data[i] = i;
     }
     T expected[] = { 0, 1, 2, 3, 42, 42, 42, 42 };
@@ -268,7 +304,7 @@ test_vector_reserve(void)
 {
     hz_vector *vec = hz_vector_new_T();
     hz_vector_reserve(vec, 100);
-    for (int i = 0; i < 100; ++i) {
+    for (T i = 0; i < 100; ++i) {
         hz_vector_append_T(vec, i);
     }
     hz_vector_assert_capacity(vec, 100);
@@ -295,30 +331,35 @@ test_vector_equals(void)
     hz_vector_append_T(vec1, 2);
     hz_vector_append_T(vec1, 3);
     hz_vector_append_T(vec1, 4);
-
     hz_vector *vec2 = hz_vector_new_T();
     hz_vector_insert_T(vec2, 0, 4);
     hz_vector_insert_T(vec2, 0, 3);
     hz_vector_insert_T(vec2, 0, 2);
     hz_vector_insert_T(vec2, 0, 1);
-
-    hz_vector_assert_equals_true(vec1, vec2);
+    hz_vector_assert_equals_true(vec1, vec2, cmp_T);
+    hz_vector_assert_equals_true(vec1, vec2, NULL);
+    hz_vector_insert_T(vec2, 0, 5);
+    hz_vector_assert_equals_false(vec1, vec2, cmp_T);
+    hz_vector_assert_equals_false(vec1, vec2, NULL);
     hz_vector_free(vec1);
     hz_vector_free(vec2);
-
-    hz_vector_assert_equals_true(NULL, NULL);
+    hz_vector_assert_equals_true(NULL, NULL, cmp_T);
+    hz_vector_assert_equals_true(NULL, NULL, NULL);
 }
 
 static void
 test_vector_reverse(void)
 {
     hz_vector *vec = hz_vector_new_T();
+    hz_vector_reserve(vec, 5);
     hz_vector_append_T(vec, 1);
     hz_vector_append_T(vec, 2);
     hz_vector_append_T(vec, 3);
     hz_vector_append_T(vec, 4);
     hz_vector_reverse(vec);
     T expected[] = { 4, 3, 2, 1 };
+    hz_vector_assert_eq(vec, expected, 4);
+    hz_vector_trim(vec);
     hz_vector_assert_eq(vec, expected, 4);
     hz_vector_free(vec);
 }
@@ -340,6 +381,18 @@ test_vector_sort(void)
     hz_vector_free(vec);
 }
 
+static void
+test_vector_bfind(void)
+{
+    hz_vector *vec = hz_vector_new_T();
+    for (T i = 0; i < 100000; ++i) {
+        hz_vector_append_T(vec, i);
+    }
+    hz_vector_assert_bsearch(vec, 75001, cmp_T, 75001);
+    hz_vector_assert_not_bsearch(vec, -1, cmp_T);
+    hz_vector_free(vec);
+}
+
 void
 test_vector(void)
 {
@@ -357,5 +410,6 @@ test_vector(void)
     test_vector_equals();
     test_vector_reverse();
     test_vector_sort();
+    test_vector_bfind();
     printf("All vector tests passed!\n");
 }

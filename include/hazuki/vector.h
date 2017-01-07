@@ -50,9 +50,9 @@
 typedef struct hz_vector hz_vector;
 
 /**
- * Comparator function for hz_vector_sort(). If a < b, returns a
- * negative number. If a > b, returns a positive number. If a == b,
- * returns zero.
+ * Comparator function for hz_vector_sort() and hz_vector_bfind().
+ * If a < b, returns a negative number. If a > b, returns a positive number.
+ * If a == b, returns zero.
  */
 typedef int (*hz_vector_cmp_func)(const void *a, const void *b);
 
@@ -173,19 +173,34 @@ hz_vector_sort(hz_vector *vec, hz_vector_cmp_func cmp_func);
  * Gets the index of the first occurence of an element in the vector. Returns
  * true if the element was found, and false otherwise. If the element was
  * found and out_index is not NULL, the index of the element is written to
- * out_index.
+ * out_index. If cmp_func is NULL, memcmp() is used to determine element
+ * equality.
  */
 bool
-hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index);
+hz_vector_search(const hz_vector *vec, const void *value, 
+                 hz_vector_cmp_func cmp_func, size_t *out_index);
+
+/**
+ * Gets the index of an element in the vector using a binary search. Returns
+ * true if the element was found, and false otherwise. If the element was
+ * found and out_index is not NULL, the index of the element is written to
+ * out_index. cmp_func must *not* be NULL. If the vector is not in sorted
+ * order, the behavior is undefined.
+ */
+bool
+hz_vector_bsearch(const hz_vector *vec, const void *value,
+                  hz_vector_cmp_func cmp_func, size_t *out_index);
 
 /**
  * Compares the two vectors. Returns true if all elements are equal, and false
  * otherwise. If either vector is NULL, the return value is true if and only if
- * the other vector is also NULL. If the vectors have different element types,
- * the behavior is undefined.
+ * both vectors are NULL. If cmp_func is NULL, memcmp() is used to determine
+ * element equality. If the vectors have different element types, the behavior
+ * is undefined.
  */
 bool
-hz_vector_equals(const hz_vector *a, const hz_vector *b);
+hz_vector_equals(const hz_vector *a, const hz_vector *b,
+                 hz_vector_cmp_func cmp_func);
 
 /**
  * Gets the internal array buffer that holds the items in the vector. Accessing

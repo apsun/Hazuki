@@ -5,7 +5,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/**
+ * Initial capacity for the vector. Must be > 0.
+ */
 #define INITIAL_CAPACITY 8
+
+/**
+ * Factor by which to scale the vector's internal buffer when full.
+ * Must be > 1.
+ */
 #define SCALING_FACTOR 1.5
 
 struct hz_vector
@@ -34,7 +42,14 @@ hz_vector_next_capacity(size_t current_capacity)
     } else if (current_capacity > (size_t)(SIZE_MAX / SCALING_FACTOR)) {
         return SIZE_MAX;
     } else {
-        return (size_t)(current_capacity * SCALING_FACTOR);
+        size_t new_capacity = (size_t)(current_capacity * SCALING_FACTOR);
+        if (new_capacity > current_capacity) {
+            return new_capacity;
+        } else {
+            // Possible if the scaling factor isn't big enough.
+            // As a workaround, increase it by the initial capacity.
+            return current_capacity + INITIAL_CAPACITY;
+        }
     }
 }
 
@@ -104,9 +119,12 @@ void
 hz_vector_resize(hz_vector *vec, size_t size, const void *fill)
 {
     hz_check_null(vec);
-    if (size > vec->capacity) {
-        hz_vector_resize_capacity(vec, size);
-    }
+    hz_vector_reserve(vec, size);
+
+    // If fill is NULL, the value of the new elements will be undefined
+    // until written to. We provide this option so that clients can
+    // call resize() and then fill the internal buffer with some code
+    // that works with standard C arrays using data().
     if (fill != NULL) {
         for (size_t i = vec->size; i < size; ++i) {
             void *dest = hz_vector_offset_of(vec, i);
@@ -175,12 +193,19 @@ hz_vector_insert(hz_vector *vec, size_t index, const void *value)
 {
     hz_check_null(vec);
     hz_check_null(value);
+
+    // Note that this algorithm still works fine if the index
+    // is equal to the size; we just shift 0 elements.
     hz_assert(index <= vec->size);
+
+    // Shift elements after target index right by 1 unit
     hz_vector_grow_if_full(vec);
     size_t num = vec->size - index;
     void *offset = hz_vector_offset_of(vec, index);
     void *next_offset = hz_vector_offset_of(vec, index + 1);
     hz_memmove(next_offset, offset, num, vec->element_size);
+
+    // Copy element into buffer
     hz_memcpy(offset, value, 1, vec->element_size);
     vec->size++;
 }
@@ -190,6 +215,8 @@ hz_vector_remove(hz_vector *vec, size_t index)
 {
     hz_check_null(vec);
     hz_assert(index < vec->size);
+
+    // Shift elements after target index left by 1 unit
     size_t num = vec->size - index - 1;
     void *offset = hz_vector_offset_of(vec, index);
     void *next_offset = hz_vector_offset_of(vec, index + 1);
@@ -201,7 +228,19 @@ void
 hz_vector_reverse(hz_vector *vec)
 {
     hz_check_null(vec);
-    void *tmp = hz_malloc(1, vec->element_size);
+
+    // If we have some free space at the end of the buffer,
+    // reuse that; otherwise allocate a temporary buffer.
+    void *tmp_mem;
+    void *tmp;
+    if (vec->capacity > vec->size) {
+        tmp = hz_vector_offset_of(vec, vec->size);
+        tmp_mem = NULL;
+    } else {
+        tmp = hz_malloc(1, vec->element_size);
+        tmp_mem = tmp;
+    }
+
     for (size_t i = 0; i < vec->size / 2; ++i) {
         void *left = hz_vector_offset_of(vec, i);
         void *right = hz_vector_offset_of(vec, vec->size - i - 1);
@@ -209,7 +248,9 @@ hz_vector_reverse(hz_vector *vec)
         hz_memcpy(left, right, 1, vec->element_size);
         hz_memcpy(right, tmp, 1, vec->element_size);
     }
-    hz_free(tmp);
+
+    // Free temporary buffer if we allocated one
+    hz_free(tmp_mem);
 }
 
 void
@@ -223,13 +264,25 @@ hz_vector_sort(hz_vector *vec, hz_vector_cmp_func cmp_func)
 }
 
 bool
-hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index)
+hz_vector_search(const hz_vector *vec, const void *value, 
+                 hz_vector_cmp_func cmp_func, size_t *out_index)
 {
     hz_check_null(vec);
     hz_check_null(value);
     for (size_t i = 0; i < vec->size; ++i) {
         void *buf_value = hz_vector_offset_of(vec, i);
-        if (hz_memcmp(buf_value, value, 1, vec->element_size) == 0) {
+
+        // If no comparator was provided, we perform a bitwise comparison
+        // of the values. Otherwise, use the given comparator to
+        // determine element equality.
+        int cmp;
+        if (cmp_func == NULL) {
+            cmp = hz_memcmp(buf_value, value, 1, vec->element_size);
+        } else {
+            cmp = cmp_func(value, buf_value);
+        }
+
+        if (cmp == 0) {
             if (out_index != NULL) {
                 *out_index = i;
             }
@@ -240,10 +293,39 @@ hz_vector_find(const hz_vector *vec, const void *value, size_t *out_index)
 }
 
 bool
-hz_vector_equals(const hz_vector *a, const hz_vector *b)
+hz_vector_bsearch(const hz_vector *vec, const void *value,
+                  hz_vector_cmp_func cmp_func, size_t *out_index)
 {
+    hz_check_null(vec);
+    hz_check_null(value);
+    hz_check_null(cmp_func);
+
+    void *offset = bsearch(
+        value, 
+        vec->buffer, 
+        vec->size,
+        vec->element_size,
+        cmp_func);
+
+    if (offset == NULL) {
+        return false;
+    } else {
+        // bsearch() returns a pointer to the element, so we have to
+        // convert it back into an index
+        *out_index = ((char *)offset - vec->buffer) / vec->element_size;
+        return true;
+    }
+}
+
+bool
+hz_vector_equals(const hz_vector *a, const hz_vector *b,
+                 hz_vector_cmp_func cmp_func)
+{
+    if (a == b) {
+        return true;
+    }
     if (a == NULL || b == NULL) {
-        return a == b;
+        return false;
     }
     if (a->element_size != b->element_size) {
         hz_abort("Vectors have diferent element types");
@@ -251,7 +333,22 @@ hz_vector_equals(const hz_vector *a, const hz_vector *b)
     if (a->size != b->size) {
         return false;
     }
-    return hz_memcmp(a->buffer, b->buffer, a->size, a->element_size) == 0;
+
+    // If no comparator function was provided, use a single memcmp()
+    // over the entire buffer. Otherwise, we have to iterate over
+    // the entries one-by-one.
+    if (cmp_func == NULL) {
+        return hz_memcmp(a->buffer, b->buffer, a->size, a->element_size) == 0;
+    } else {
+        for (size_t i = 0; i < a->size; ++i) {
+            void *a_value = hz_vector_offset_of(a, i);
+            void *b_value = hz_vector_offset_of(b, i);
+            if (cmp_func(a_value, b_value) != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 void *

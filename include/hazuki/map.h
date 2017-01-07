@@ -59,7 +59,7 @@ typedef int (*hz_map_cmp_func)(const void *a, const void *b);
 
 /**
  * Creates a new empty hashmap with the given key and value sizes and
- * hash and comparator functions. You must free the returned hashmap
+ * key hash and comparator functions. You must free the returned hashmap
  * using hz_map_free().
  */
 hz_map *
@@ -115,6 +115,17 @@ hz_map_put(hz_map *map, const void *key, const void *value, void *out_value);
  */
 bool
 hz_map_remove(hz_map *map, const void *key, void *out_value);
+
+/**
+ * Compares the two hashmaps. Returns true if for all keys in a and b
+ * a[key] == b[key], and false otherwise. If either hashmap is NULL,
+ * the return value is true if and only if both hashmaps are NULL.
+ * cmp_func is used to compare *values*, not keys. If cmp_func is NULL,
+ * values are compared using memcmp(). If the hashmaps have different key
+ * or value types, the behavior is undefined.
+ */
+bool
+hz_map_equals(const hz_map *a, const hz_map *b, hz_map_cmp_func cmp_func);
 
 /**
  * Creates an iterator that can be used to iterate over the elements in
