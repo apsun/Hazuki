@@ -63,8 +63,11 @@ typedef int (*hz_map_cmp_func)(const void *a, const void *b);
  * using hz_map_free().
  */
 hz_map *
-hz_map_new(size_t key_size, size_t value_size,
-           hz_map_hash_func hash_func, hz_map_cmp_func cmp_func);
+hz_map_new(
+    size_t key_size,
+    size_t value_size,
+    hz_map_hash_func hash_func,
+    hz_map_cmp_func cmp_func);
 
 /**
  * Creates a new hashmap by copying an existing one.

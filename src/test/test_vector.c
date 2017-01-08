@@ -303,6 +303,10 @@ static void
 test_vector_reserve(void)
 {
     hz_vector *vec = hz_vector_new_T();
+    hz_vector_reserve(vec, 1);
+    hz_vector_append_T(vec, 1);
+    hz_vector_append_T(vec, 2);
+    hz_vector_clear(vec);
     hz_vector_reserve(vec, 100);
     for (T i = 0; i < 100; ++i) {
         hz_vector_append_T(vec, i);

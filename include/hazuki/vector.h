@@ -50,9 +50,11 @@
 typedef struct hz_vector hz_vector;
 
 /**
- * Comparator function for hz_vector_sort() and hz_vector_bfind().
- * If a < b, returns a negative number. If a > b, returns a positive number.
- * If a == b, returns zero.
+ * Comparator function for hz_vector. For functions that require an ordering
+ * (hz_vector_sort() and hz_vector_bsearch()), this function must return a
+ * negative number if a < b, a positive number if a > b, and zero if a == b.
+ * For other functions (hz_vector_equals() and hz_vector_search()), this
+ * function may return any non-zero value if the inputs are not equal.
  */
 typedef int (*hz_vector_cmp_func)(const void *a, const void *b);
 
@@ -177,8 +179,11 @@ hz_vector_sort(hz_vector *vec, hz_vector_cmp_func cmp_func);
  * equality.
  */
 bool
-hz_vector_search(const hz_vector *vec, const void *value, 
-                 hz_vector_cmp_func cmp_func, size_t *out_index);
+hz_vector_search(
+    const hz_vector *vec,
+    const void *value,
+    hz_vector_cmp_func cmp_func,
+    size_t *out_index);
 
 /**
  * Gets the index of an element in the vector using a binary search. Returns
@@ -188,8 +193,11 @@ hz_vector_search(const hz_vector *vec, const void *value,
  * order, the behavior is undefined.
  */
 bool
-hz_vector_bsearch(const hz_vector *vec, const void *value,
-                  hz_vector_cmp_func cmp_func, size_t *out_index);
+hz_vector_bsearch(
+    const hz_vector *vec,
+    const void *value,
+    hz_vector_cmp_func cmp_func,
+    size_t *out_index);
 
 /**
  * Compares the two vectors. Returns true if all elements are equal, and false
@@ -199,8 +207,10 @@ hz_vector_bsearch(const hz_vector *vec, const void *value,
  * is undefined.
  */
 bool
-hz_vector_equals(const hz_vector *a, const hz_vector *b,
-                 hz_vector_cmp_func cmp_func);
+hz_vector_equals(
+    const hz_vector *a,
+    const hz_vector *b,
+    hz_vector_cmp_func cmp_func);
 
 /**
  * Gets the internal array buffer that holds the items in the vector. Accessing

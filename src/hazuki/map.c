@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /**
- * Initial capacity for the hashmap. Must be > 0.
+ * Initial capacity for the hashmap. Must be an integer > 0.
  */
 #define INITIAL_CAPACITY 8
 
@@ -13,7 +13,7 @@
  * Factor by which to scale the hashmap's bucket array when the load
  * factor is reached. Must be > 1.
  */
-#define SCALING_FACTOR 2
+#define SCALING_FACTOR 1.5
 
 /**
  * When the number of entries divided by the number of buckets reaches
@@ -98,40 +98,51 @@ hz_map_entry_value_offset(const hz_map *map, const hz_map_entry *entry)
 }
 
 static void
-hz_map_entry_get_key(const hz_map *map, hz_map_entry *entry,
-                     void *out_key)
+hz_map_entry_get_key(
+    const hz_map *map,
+    hz_map_entry *entry,
+    void *out_key)
 {
     void *key = hz_map_entry_key_offset(map, entry);
     hz_memcpy(out_key, key, 1, map->key_size);
 }
 
 static void
-hz_map_entry_get_value(const hz_map *map, hz_map_entry *entry,
-                       void *out_value)
+hz_map_entry_get_value(
+    const hz_map *map,
+    hz_map_entry *entry,
+    void *out_value)
 {
     void *value = hz_map_entry_value_offset(map, entry);
     hz_memcpy(out_value, value, 1, map->value_size);
 }
 
 static void
-hz_map_entry_set_key(const hz_map *map, hz_map_entry *entry,
-                     const void *new_key)
+hz_map_entry_set_key(
+    const hz_map *map,
+    hz_map_entry *entry,
+    const void *new_key)
 {
     void *key = hz_map_entry_key_offset(map, entry);
     hz_memcpy(key, new_key, 1, map->key_size);
 }
 
 static void
-hz_map_entry_set_value(const hz_map *map, hz_map_entry *entry,
-                       const void *new_value)
+hz_map_entry_set_value(
+    const hz_map *map,
+    hz_map_entry *entry,
+    const void *new_value)
 {
     void *value = hz_map_entry_value_offset(map, entry);
     hz_memcpy(value, new_value, 1, map->value_size);
 }
 
 static bool
-hz_map_entry_matches(const hz_map *map, const hz_map_entry *entry,
-                     size_t hash, const void *key)
+hz_map_entry_matches(
+    const hz_map *map,
+    const hz_map_entry *entry,
+    size_t hash,
+    const void *key)
 {
     // If the hashes don't match, we don't need to compare the keys.
     if (entry->hash != hash) {
@@ -167,8 +178,11 @@ hz_map_find_entry(const hz_map *map, size_t hash, const void *key)
 }
 
 static hz_map_entry *
-hz_map_entry_new(const hz_map *map, size_t hash,
-                 const void *key, const void *value)
+hz_map_entry_new(
+    const hz_map *map,
+    size_t hash,
+    const void *key,
+    const void *value)
 {
     hz_map_entry *entry = hz_map_entry_alloc(map);
     entry->next = NULL;
@@ -213,7 +227,7 @@ hz_map_next_bucket_count(size_t current_count)
     } else if (current_count == 0) {
         return INITIAL_CAPACITY;
     } else {
-        return current_count * SCALING_FACTOR;
+        return (size_t)(current_count * SCALING_FACTOR);
     }
 }
 
@@ -310,8 +324,11 @@ hz_map_free_buckets(hz_map *map)
 }
 
 hz_map *
-hz_map_new(size_t key_size, size_t value_size,
-           hz_map_hash_func hash_func, hz_map_cmp_func cmp_func)
+hz_map_new(
+    size_t key_size,
+    size_t value_size,
+    hz_map_hash_func hash_func,
+    hz_map_cmp_func cmp_func)
 {
     hz_check_null(hash_func);
     hz_check_null(cmp_func);

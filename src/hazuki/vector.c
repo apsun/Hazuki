@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 /**
- * Initial capacity for the vector. Must be > 0.
+ * Initial capacity for the vector. Must be an integer > 0.
  */
 #define INITIAL_CAPACITY 8
 
@@ -264,8 +264,11 @@ hz_vector_sort(hz_vector *vec, hz_vector_cmp_func cmp_func)
 }
 
 bool
-hz_vector_search(const hz_vector *vec, const void *value, 
-                 hz_vector_cmp_func cmp_func, size_t *out_index)
+hz_vector_search(
+    const hz_vector *vec,
+    const void *value,
+    hz_vector_cmp_func cmp_func,
+    size_t *out_index)
 {
     hz_check_null(vec);
     hz_check_null(value);
@@ -293,8 +296,11 @@ hz_vector_search(const hz_vector *vec, const void *value,
 }
 
 bool
-hz_vector_bsearch(const hz_vector *vec, const void *value,
-                  hz_vector_cmp_func cmp_func, size_t *out_index)
+hz_vector_bsearch(
+    const hz_vector *vec,
+    const void *value,
+    hz_vector_cmp_func cmp_func,
+    size_t *out_index)
 {
     hz_check_null(vec);
     hz_check_null(value);
@@ -318,8 +324,10 @@ hz_vector_bsearch(const hz_vector *vec, const void *value,
 }
 
 bool
-hz_vector_equals(const hz_vector *a, const hz_vector *b,
-                 hz_vector_cmp_func cmp_func)
+hz_vector_equals(
+    const hz_vector *a,
+    const hz_vector *b,
+    hz_vector_cmp_func cmp_func)
 {
     if (a == b) {
         return true;
