@@ -361,10 +361,12 @@ test_vector_reverse(void)
     hz_vector_append_T(vec, 3);
     hz_vector_append_T(vec, 4);
     hz_vector_reverse(vec);
-    T expected[] = { 4, 3, 2, 1 };
-    hz_vector_assert_eq(vec, expected, 4);
+    T expected1[] = { 4, 3, 2, 1 };
+    hz_vector_assert_eq(vec, expected1, 4);
     hz_vector_trim(vec);
-    hz_vector_assert_eq(vec, expected, 4);
+    hz_vector_reverse(vec);
+    T expected2[] = { 1, 2, 3, 4 };
+    hz_vector_assert_eq(vec, expected2, 4);
     hz_vector_free(vec);
 }
 
