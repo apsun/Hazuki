@@ -30,6 +30,16 @@ do {                                                  \
 } while (0)
 
 /**
+ * Returns the minimum of the two arguments.
+ */
+#define hz_min(x, y) ((x) < (y)) ? (x) : (y)
+
+/**
+ * Returns the maximum of the two arguments.
+ */
+#define hz_max(x, y) ((x) > (y)) ? (x) : (y)
+
+/**
  * Allocates a block of memory, with overflow and failure checking.
  * If num == 0, NULL is returned. The unit size must not be 0.
  * If num != 0, hz_malloc(num, sizeof(T)) is equivalent to

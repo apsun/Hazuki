@@ -13,7 +13,7 @@
  * Factor by which to scale the hashmap's bucket array when the load
  * factor is reached. Must be > 1.
  */
-#define SCALING_FACTOR 1.5
+#define SCALING_FACTOR 2
 
 /**
  * When the number of entries divided by the number of buckets reaches
@@ -25,7 +25,8 @@ typedef struct hz_map_entry
 {
     struct hz_map_entry *next;
     size_t hash;
-    char buffer[];
+    void *key;
+    void *value;
 } hz_map_entry;
 
 struct hz_map
@@ -76,65 +77,10 @@ hz_map_entry_alloc(const hz_map *map)
 {
     // sizeof(hz_map_entry) gives the size without the flexible array,
     // so we need to add the size of the key and value.
-    size_t size = sizeof(hz_map_entry) + map->key_size + map->value_size;
-    hz_map_entry *entry = hz_malloc(1, size);
+    hz_map_entry *entry = hz_malloc(1, sizeof(hz_map_entry));
+    entry->key = hz_malloc(1, map->key_size);
+    entry->value = hz_malloc(1, map->value_size);
     return entry;
-}
-
-static void *
-hz_map_entry_key_offset(const hz_map *map, const hz_map_entry *entry)
-{
-    // Technically we don't need the map argument since the key
-    // is at buffer[0], but we take it anyways for consistency
-    // with the value offset function.
-    (void)map;
-    return (void *)(entry->buffer);
-}
-
-static void *
-hz_map_entry_value_offset(const hz_map *map, const hz_map_entry *entry)
-{
-    return (void *)(entry->buffer + map->key_size);
-}
-
-static void
-hz_map_entry_get_key(
-    const hz_map *map,
-    hz_map_entry *entry,
-    void *out_key)
-{
-    void *key = hz_map_entry_key_offset(map, entry);
-    hz_memcpy(out_key, key, 1, map->key_size);
-}
-
-static void
-hz_map_entry_get_value(
-    const hz_map *map,
-    hz_map_entry *entry,
-    void *out_value)
-{
-    void *value = hz_map_entry_value_offset(map, entry);
-    hz_memcpy(out_value, value, 1, map->value_size);
-}
-
-static void
-hz_map_entry_set_key(
-    const hz_map *map,
-    hz_map_entry *entry,
-    const void *new_key)
-{
-    void *key = hz_map_entry_key_offset(map, entry);
-    hz_memcpy(key, new_key, 1, map->key_size);
-}
-
-static void
-hz_map_entry_set_value(
-    const hz_map *map,
-    hz_map_entry *entry,
-    const void *new_value)
-{
-    void *value = hz_map_entry_value_offset(map, entry);
-    hz_memcpy(value, new_value, 1, map->value_size);
 }
 
 static bool
@@ -150,14 +96,7 @@ hz_map_entry_matches(
     }
 
     // If the hashes match, we still need to check that the keys are equal.
-    void *entry_key = hz_map_entry_key_offset(map, entry);
-    int cmp;
-    if (map->cmp_func == NULL) {
-        cmp = hz_memcmp(key, entry_key, 1, map->key_size);
-    } else {
-        cmp = map->cmp_func(key, entry_key);
-    }
-    return cmp == 0;
+    return map->cmp_func(key, entry->key) == 0;
 }
 
 static hz_map_entry *
@@ -187,8 +126,8 @@ hz_map_entry_new(
     hz_map_entry *entry = hz_map_entry_alloc(map);
     entry->next = NULL;
     entry->hash = hash;
-    hz_map_entry_set_key(map, entry, key);
-    hz_map_entry_set_value(map, entry, value);
+    hz_memcpy(entry->key, key, 1, map->key_size);
+    hz_memcpy(entry->value, value, 1, map->value_size);
     return entry;
 }
 
@@ -203,10 +142,8 @@ hz_map_entry_copy(const hz_map *map, const hz_map_entry *entry)
         hz_map_entry *curr = hz_map_entry_alloc(map);
         curr->next = prev;
         curr->hash = entry->hash;
-        void *src_key = hz_map_entry_key_offset(map, entry);
-        void *src_value = hz_map_entry_value_offset(map, entry);
-        hz_map_entry_set_key(map, curr, src_key);
-        hz_map_entry_set_value(map, curr, src_value);
+        hz_memcpy(curr->key, entry->key, 1, map->key_size);
+        hz_memcpy(curr->value, entry->value, 1, map->value_size);
         prev = curr;
         entry = entry->next;
     }
@@ -216,6 +153,8 @@ hz_map_entry_copy(const hz_map *map, const hz_map_entry *entry)
 static void
 hz_map_entry_free(hz_map_entry *entry)
 {
+    hz_free(entry->key);
+    hz_free(entry->value);
     hz_free(entry);
 }
 
@@ -399,7 +338,7 @@ hz_map_get(const hz_map *map, const void *key, void *out_value)
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
     if (entry != NULL) {
         if (out_value != NULL) {
-            hz_map_entry_get_value(map, entry, out_value);
+            hz_memcpy(out_value, entry->value, 1, map->value_size);
         }
         return true;
     } else {
@@ -420,9 +359,9 @@ hz_map_put(hz_map *map, const void *key, const void *value, void *out_value)
         // If we already had a matching entry for the given key,
         // just replace the entry's value
         if (out_value != NULL) {
-            hz_map_entry_get_value(map, entry, out_value);
+            hz_memcpy(out_value, entry->value, 1, map->value_size);
         }
-        hz_map_entry_set_value(map, entry, value);
+        hz_memcpy(entry->value, value, 1, map->value_size);
         return true;
     } else {
         // No matching entry for the given key, insert a new one
@@ -450,7 +389,7 @@ hz_map_remove(hz_map *map, const void *key, void *out_value)
         hz_map_entry *curr = *entry;
         if (hz_map_entry_matches(map, curr, hash, key)) {
             if (out_value != NULL) {
-                hz_map_entry_get_value(map, curr, out_value);
+                hz_memcpy(out_value, curr->value, 1, map->value_size);
             }
             *entry = curr->next;
             hz_map_entry_free(curr);
@@ -489,19 +428,17 @@ hz_map_equals(const hz_map *a, const hz_map *b, hz_map_cmp_func cmp_func)
     for (size_t i = 0; i < a->bucket_count; ++i) {
         hz_map_entry *a_entry = a->buckets[i];
         while (a_entry != NULL) {
-            void *key = hz_map_entry_key_offset(a, a_entry);
-
             // Find corresponding entry in B
-            size_t b_hash = hz_map_hash_key(b, key);
-            hz_map_entry *b_entry = hz_map_find_entry(b, b_hash, key);
+            size_t b_hash = hz_map_hash_key(b, a_entry->key);
+            hz_map_entry *b_entry = hz_map_find_entry(b, b_hash, a_entry->key);
             if (b_entry == NULL) {
                 return false;
             }
 
             // If a custom comparator function was provided, use
             // that to determine value equality. Otherwise, use memcmp().
-            void *a_value = hz_map_entry_value_offset(a, a_entry);
-            void *b_value = hz_map_entry_value_offset(b, b_entry);
+            void *a_value = a_entry->value;
+            void *b_value = b_entry->value;
             int cmp;
             if (cmp_func == NULL) {
                 cmp = hz_memcmp(a_value, b_value, 1, a->value_size);
@@ -559,10 +496,10 @@ hz_map_iterator_next(hz_map_iterator *it, void *key, void *value)
 
     // Write key and value as necessary
     if (key != NULL) {
-        hz_map_entry_get_key(it->map, it->current_entry, key);
+        hz_memcpy(key, it->current_entry->key, 1, it->map->key_size);
     }
     if (value != NULL) {
-        hz_map_entry_get_value(it->map, it->current_entry, value);
+        hz_memcpy(value, it->current_entry->value, 1, it->map->value_size);
     }
 
     // Move to the next entry in the current bucket

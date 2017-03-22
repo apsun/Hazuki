@@ -42,14 +42,9 @@ hz_vector_next_capacity(size_t current_capacity)
     } else if (current_capacity > (size_t)(SIZE_MAX / SCALING_FACTOR)) {
         return SIZE_MAX;
     } else {
-        size_t new_capacity = (size_t)(current_capacity * SCALING_FACTOR);
-        if (new_capacity > current_capacity) {
-            return new_capacity;
-        } else {
-            // Possible if the scaling factor isn't big enough.
-            // As a workaround, increase it by the initial capacity.
-            return current_capacity + INITIAL_CAPACITY;
-        }
+        size_t scale_capacity = (size_t)(current_capacity * SCALING_FACTOR);
+        size_t add_capacity = current_capacity + INITIAL_CAPACITY;
+        return hz_max(scale_capacity, add_capacity);
     }
 }
 
