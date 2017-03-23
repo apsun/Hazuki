@@ -32,12 +32,12 @@ do {                                                  \
 /**
  * Returns the minimum of the two arguments.
  */
-#define hz_min(x, y) ((x) < (y)) ? (x) : (y)
+#define hz_min(x, y) (((x) < (y)) ? (x) : (y))
 
 /**
  * Returns the maximum of the two arguments.
  */
-#define hz_max(x, y) ((x) > (y)) ? (x) : (y)
+#define hz_max(x, y) (((x) > (y)) ? (x) : (y))
 
 /**
  * Allocates a block of memory, with overflow and failure checking.
