@@ -13,7 +13,13 @@ Core development principles:
 - No external dependencies
 - No platform-specific code
 - No global state
+- Intuitive API
 - Minimize undefined behavior
+
+NOT core development principles:
+
+- Performance
+- Customizability
 
 Note that unlike many C libraries, Hazuki is unforgiving of
 invalid arguments - violating function contracts will result

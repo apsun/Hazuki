@@ -75,8 +75,6 @@ hz_map_get_bucket_index(size_t hash, size_t bucket_count)
 static hz_map_entry *
 hz_map_entry_alloc(const hz_map *map)
 {
-    // sizeof(hz_map_entry) gives the size without the flexible array,
-    // so we need to add the size of the key and value.
     hz_map_entry *entry = hz_malloc(1, sizeof(hz_map_entry));
     entry->key = hz_malloc(1, map->key_size);
     entry->value = hz_malloc(1, map->value_size);
@@ -334,6 +332,7 @@ hz_map_get(const hz_map *map, const void *key, void *out_value)
 {
     hz_check_null(map);
     hz_check_null(key);
+
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);
     if (entry != NULL) {
@@ -352,6 +351,7 @@ hz_map_put(hz_map *map, const void *key, const void *value, void *out_value)
     hz_check_null(map);
     hz_check_null(key);
     hz_check_null(value);
+
     hz_map_touch(map);
     size_t hash = hz_map_hash_key(map, key);
     hz_map_entry *entry = hz_map_find_entry(map, hash, key);

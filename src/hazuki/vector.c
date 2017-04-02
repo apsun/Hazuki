@@ -37,14 +37,11 @@ hz_vector_next_capacity(size_t current_capacity)
     if (current_capacity == SIZE_MAX) {
         hz_abort("Cannot resize vector larger than %zu elements", SIZE_MAX);
         return 0;
-    } else if (current_capacity == 0) {
-        return INITIAL_CAPACITY;
     } else if (current_capacity > (size_t)(SIZE_MAX / SCALING_FACTOR)) {
         return SIZE_MAX;
     } else {
         size_t scale_capacity = (size_t)(current_capacity * SCALING_FACTOR);
-        size_t add_capacity = current_capacity + INITIAL_CAPACITY;
-        return hz_max(scale_capacity, add_capacity);
+        return hz_max(scale_capacity, INITIAL_CAPACITY);
     }
 }
 
@@ -158,6 +155,7 @@ hz_vector_get(const hz_vector *vec, size_t index, void *out_value)
     hz_check_null(vec);
     hz_check_null(out_value);
     hz_assert(index < vec->size);
+
     void *src = hz_vector_offset_of(vec, index);
     hz_memcpy(out_value, src, 1, vec->element_size);
 }
@@ -168,6 +166,7 @@ hz_vector_set(hz_vector *vec, size_t index, const void *value)
     hz_check_null(vec);
     hz_check_null(value);
     hz_assert(index < vec->size);
+
     void *dest = hz_vector_offset_of(vec, index);
     hz_memcpy(dest, value, 1, vec->element_size);
 }
@@ -177,6 +176,7 @@ hz_vector_append(hz_vector *vec, const void *value)
 {
     hz_check_null(vec);
     hz_check_null(value);
+
     hz_vector_grow_if_full(vec);
     void *dest = hz_vector_offset_of(vec, vec->size);
     hz_memcpy(dest, value, 1, vec->element_size);
